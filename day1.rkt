@@ -5,12 +5,12 @@
 (define (get-fuel mass)
   (- (quotient mass 3) 2))
 
-(define (get-all-fuel-acc mass acc)
-  (define additional-fuel (get-fuel mass))
-  (if (<= additional-fuel 0)
-      acc
-      (get-all-fuel-acc additional-fuel (+ acc additional-fuel))))
 (define (get-all-fuel mass)
+  (define (get-all-fuel-acc mass acc)
+    (define additional-fuel (get-fuel mass))
+    (if (<= additional-fuel 0)
+        acc
+        (get-all-fuel-acc additional-fuel (+ acc additional-fuel))))
   (get-all-fuel-acc mass 0))
 
 (check-equal? (get-fuel 12) 2)
