@@ -11,8 +11,7 @@ proc processProgram[T: SomeInteger](state: seq[T]): seq[T] =
     result.add(state[i])
   var startIdx: T = 0
   while (startIdx + 4) <= T(high(result)):
-    let
-      opcode = result[startIdx]
+    let opcode = result[startIdx]
     if opcode == 1:
       result[result[startIdx + 3]] = result[result[startIdx + 1]] + result[result[startIdx + 2]]
       startIdx += 4
