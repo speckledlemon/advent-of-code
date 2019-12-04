@@ -1,8 +1,9 @@
 from algorithm import sorted
+from sugar import `=>`
+import math
 import sequtils
 import strutils
 import sets
-from sugar import `=>`
 import ./aoc_utils
 
 type
@@ -65,7 +66,7 @@ proc getIntersectionOfLines(line1: Line, line2: Line): Point =
                intersectionY = ((a1 * c2) - (a2 * c1)) / determinant
              # echo intersectionX, " ", intersectionY
              # The implementation is general until here: we can safely assume
-             # that all lines are straight.
+             # that all lines are either vertical or horizontal.
              (x: int(intersectionX), y: int(intersectionY))
 
 proc getIntersectionOfSegments(seg1: Line, seg2: Line): Point =
@@ -84,8 +85,7 @@ proc getIntersectionOfSegments(seg1: Line, seg2: Line): Point =
       result = infiniteLineIntersection
 
 proc findIntersections(wire1: seq[Line], wire2: seq[Line]): HashSet[Point] =
-  var
-    intersection: Point
+  var intersection: Point
   for segment1 in wire1:
     for segment2 in wire2:
       intersection = getIntersectionOfSegments(segment1, segment2)
@@ -109,7 +109,50 @@ proc getClosestIntersection(strDirections1: string, strDirections2: string): int
     )
   )[0]
 
-# proc getFewestCombinedSteps() =
+proc len(line: Line): int =
+  let
+    xc = (line.finish.x - line.start.x) ^ 2
+    yc = (line.finish.y - line.start.y) ^ 2
+  # again, only vertical or horizontal lines are present
+  int(sqrt(float(xc + yc)))
+
+proc pathLength(wire: seq[Line], stoppingIndexInclusive: int): int =
+  if stoppingIndexInclusive > 0:
+    for i in 0..stoppingIndexInclusive:
+      result += len(wire[i])
+
+proc findIntersectionsWithPath(wire1: seq[Line], wire2: seq[Line]): HashSet[(int, Point)] =
+  var
+    intersection: Point
+    pl1: int
+    pl2: int
+    remainder1: int
+    remainder2: int
+  for i1, segment1 in wire1:
+    for i2, segment2 in wire2:
+      intersection = getIntersectionOfSegments(segment1, segment2)
+      if intersection != singletonForNoIntersection:
+        # It is more complicated than just the sum of the path lengths. It is
+        # the sum of the path lengths up until the segments that intersect,
+        # then for the two segments that intersect, is the length of each
+        # segment from their start points to the intersection point.
+        pl1 = pathLength(wire1, i1 - 1)
+        pl2 = pathLength(wire2, i2 - 1)
+        remainder1 = len((start: wire1[i1].start, finish: intersection))
+        remainder2 = len((start: wire2[i2].start, finish: intersection))
+        result.incl((pl1 + pl2 + remainder1 + remainder2, intersection))
+  # the origin doesn't count as an intersection
+  result.excl((0, origin))
+
+proc getFewestCombinedSteps(strDirections1: string, strDirections2: string): int =
+  sorted(
+    toSeq(
+      findIntersectionsWithPath(
+        makeLinesFromString(strDirections1),
+        makeLinesFromString(strDirections2)
+      )
+    )
+  )[0][0]
 
 when isMainModule:
   # assert makePointsFromString("R8,U5,L5,D3,") == @[(x: 8, y: 0), (x: 8, y: 5), (x: 3, y: 5), (x: 3, y: 2)]
@@ -130,6 +173,7 @@ when isMainModule:
                                 "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7") == 135
 
   let inputs = readAllLines("day3_input.txt")
+
   echo "part 1: ", getClosestIntersection(inputs[0], inputs[1])
 
   assert getFewestCombinedSteps("R8,U5,L5,D3,", "U7,R6,D4,L4") == 30
@@ -137,3 +181,5 @@ when isMainModule:
                                 "U62,R66,U55,R34,D71,R55,D58,R83") == 610
   assert getFewestCombinedSteps("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51",
                                 "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7") == 410
+
+  echo "part 2: ", getFewestCombinedSteps(inputs[0], inputs[1])
