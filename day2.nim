@@ -1,6 +1,5 @@
 from sequtils import map
 from strutils import split, parseBiggestUInt
-import strutils
 from sugar import `=>`
 import ./aoc_utils
 
