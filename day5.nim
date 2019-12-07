@@ -1,8 +1,8 @@
 from algorithm import reversed
 from sequtils import map
-from strutils import split, parseBiggestInt
-# from sugar import `=>`
-import ./aoc_utils
+from strutils import split, parseInt
+from sugar import `=>`
+import math
 
 type
   Opcode = enum
@@ -11,77 +11,85 @@ type
     position, immediate
 
 proc modeCharToMode(mc: char): Mode =
-  # Why bother?
-  # case parseBiggestInt($mc):
-  #   of 0: Mode.position
-  #   of 1: Mode.immediate
   case mc:
     of '0': Mode.position
     of '1': Mode.immediate
     else: raise
 
 proc parseInstruction(instruction: string): (seq[Mode], Opcode) =
+  assert instruction.len >= 1
   let
+    maxNumArguments = 3
     h = high(instruction)
-    modeStr = instruction[low(instruction)..(h - 2)]
-    opcodeStr = instruction[(h - 1)..h]
-    opcode = case parseBiggestInt(opcodeStr):
+    opcodeStr = if instruction.len == 2: instruction[(h - 1)..h]
+                else: $instruction[h]
+    opcode = case parseInt(opcodeStr):
                of 1: Opcode.add
                of 2: Opcode.multiply
                of 3: Opcode.input
                of 4: Opcode.output
                of 99: Opcode.halt
                else: raise
-  var
-    splitModes = reversed(modeStr)
-  while splitModes.len < 3:
+    # The given string can be anywhere between 1-5 digits long.
+    modeStr = if instruction.len > 1: instruction[low(instruction)..(h - 2)]
+              else: ""
+  var splitModes = reversed(modeStr)
+  while splitModes.len < maxNumArguments:
     splitModes.add('0')
-  let modes = map(splitModes, modeCharToMode)
-  # echo low(instruction), " ", h - 2, " ", h - 1, " ", h
-  # echo modeStr, " ", opcodeStr, " ", opcode, " ", modes
-  result = (modes, opcode)
+  result = (map(splitModes, modeCharToMode), opcode)
 
 proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode): T =
   case mode:
     of Mode.position: tape[tape[offset]]
     of Mode.immediate: tape[offset]
 
-proc processProgram[T: SomeSignedInt](input: T, state: seq[T]): seq[T] =
+proc processProgram[T: SomeInteger](input: T, state: seq[T]): (T, seq[T]) =
   # make a mutable copy of the input
-  result = newSeq[T]()
+  var tape = newSeq[T]()
   for i in low(state)..high(state):
-    result.add(state[i])
+    tape.add(state[i])
   ##########
-  var startIdx: T = 0
-  while (startIdx + 4) <= T(high(result)):
-    let (modes, opcode) = parseInstruction($result[startIdx])
+  let maxInstructionWidth = 4
+  var
+    startIdx: T = 0
+    output: T
+  while (startIdx + maxInstructionWidth) <= T(high(tape)):
+    let (modes, opcode) = parseInstruction($tape[startIdx])
     case opcode:
       of Opcode.add:
-        let a1 = getArg(result, startIdx + 1, modes[0])
-        let a2 = getArg(result, startIdx + 2, modes[1])
+        # Parameters that an instruction writes to will never be in immediate mode.
         assert modes[2] == Mode.position
-        result[result[startIdx + 3]] = a1 + a2
+        tape[tape[startIdx + 3]] = getArg(tape, startIdx + 1, modes[0]) + getArg(tape, startIdx + 2, modes[1])
         startIdx += 4
       of Opcode.multiply:
-        let a1 = getArg(result, startIdx + 1, modes[0])
-        let a2 = getArg(result, startIdx + 2, modes[1])
+        # Parameters that an instruction writes to will never be in immediate mode.
         assert modes[2] == Mode.position
-        result[result[startIdx + 3]] = a1 * a2
+        tape[tape[startIdx + 3]] = getArg(tape, startIdx + 1, modes[0]) * getArg(tape, startIdx + 2, modes[1])
         startIdx += 4
       of Opcode.input:
+        # Parameters that an instruction writes to will never be in immediate mode.
         assert modes[0] == Mode.position
-        result[result[startIdx + 1]] = input
+        tape[tape[startIdx + 1]] = input
         startIdx += 2
       of Opcode.output:
-        assert modes[0] == Mode.position
-        echo "output: ", result[result[startIdx + 1]]
+        output = getArg(tape, startIdx + 1, modes[0])
+        if output != 0:
+          return (output, tape)
         startIdx += 2
       of Opcode.halt:
-        assert modes[0] == Mode.position
+        # it looks like the modes are 9, 9, 9
+        # assert modes[0] == Mode.position
         startIdx += 1
+  (output, tape)
 
 when isMainModule:
-  # var unprocessedProgram = readAllLines("day5_input.txt")[0].split(',').map(i => parseBiggestInt(i))
+  let
+    f = open("day5_input.txt")
+    unprocessedProgram = readLine(f).split(',').map(i => parseInt(i))
+  close(f)
   doAssert parseInstruction("1002") == (@[Mode.position, Mode.immediate, Mode.position], Opcode.multiply)
-  doAssert processProgram(27, @[1002, 4, 3, 4, 33]) == @[1002, 4, 3, 4, 99]
-  # echo processProgram(69, @[3, 0, 4, 0, 99])
+  doAssert parseInstruction("3") == (@[Mode.position, Mode.position, Mode.position], Opcode.input)
+  doAssert processProgram(27, @[1002, 4, 3, 4, 33]) == (0, @[1002, 4, 3, 4, 99])
+  doAssert processProgram(28, @[1101, 100, -1, 4, 0]) == (0, @[1101, 100, -1, 4, 99])
+  let (p1output, p1tape) = processProgram(1, unprocessedProgram)
+  echo "part 1: ", p1output
