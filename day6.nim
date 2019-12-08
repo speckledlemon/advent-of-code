@@ -3,6 +3,7 @@ from strutils import split, strip
 from sugar import `=>`
 import tables
 import sets
+import timeit
 
 proc readAllLines(filename: string): seq[string] =
   result = newSeq[string]()
@@ -26,7 +27,8 @@ proc neighbors(g: Graph, node: string): HashSet[string] =
 proc distance(g: Graph, u: string, v: string): int =
   1
 
-proc minDistance(vertices: HashSet[string], distances: Table[string, int]): string =
+proc minDistance(vertices: HashSet[string], distances: Table[string,
+    int]): string =
   var
     vCopy = vertices
     minIndex = vCopy.pop
@@ -72,12 +74,12 @@ proc fromPairs(ps: openArray[(string, string)], directed: bool = true): Graph =
     if not directed:
       loadGraph(1, 0)
 
-proc countOrbits(g: Graph, startNode: string, depth: int = 1): int =
+proc countOrbits(g: Graph, startNode: string, depth: int = 1): int {.discardable.} =
   let children = g.getOrDefault(startNode)
   for child in children:
     result += depth + countOrbits(g, child, depth + 1)
 
-proc numOrbitalTransfers(g: Graph): int =
+proc numOrbitalTransfers(g: Graph): int {.discardable.} =
   dijkstra(g, "YOU")[0]["SAN"] - 2
 
 when isMainModule:
@@ -112,9 +114,11 @@ K)L
   # total orbits is depth of each node
   doAssert countOrbits(fromPairs(testOrbit), "COM") == 42
 
-  let ps = readAllLines("day6_input.txt").linesToPairs()
+  let
+    ps = readAllLines("day6_input.txt").linesToPairs()
+    part1graph = ps.fromPairs()
 
-  echo "part 1: ", ps.fromPairs().countOrbits("COM")
+  echo "part 1: ", part1graph.countOrbits("COM")
 
   let part2example = """
 COM)B
@@ -132,4 +136,13 @@ K)YOU
 I)SAN
 """.strip().split().linesToPairs().fromPairs(false)
   doAssert numOrbitalTransfers(part2example) == 4
-  echo "part 2: ", ps.fromPairs(false).numOrbitalTransfers()
+  let part2graph = ps.fromPairs(false)
+  echo "part 2: ", part2graph.numOrbitalTransfers()
+
+  echo timeGo(readAllLines("day6_input.txt").linesToPairs().fromPairs().countOrbits("COM"))
+  echo timeGo(readAllLines("day6_input.txt").linesToPairs().fromPairs(
+      false).numOrbitalTransfers())
+  echo timeGo(ps.fromPairs().countOrbits("COM"))
+  echo timeGo(ps.fromPairs(false).numOrbitalTransfers())
+  echo timeGo(part1graph.countOrbits("COM"))
+  echo timeGo(part2graph.numOrbitalTransfers())
