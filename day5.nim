@@ -52,6 +52,10 @@ proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode): T =
     of Mode.position: tape[tape[offset]]
     of Mode.immediate: tape[offset]
 
+template first(): untyped = getArg(tape, startIdx + 1, modes[0])
+template second(): untyped = getArg(tape, startIdx + 2, modes[1])
+template res(): untyped = tape[tape[startIdx + opcode.len - 1]]
+
 proc processProgram[T: SomeInteger](input: T, state: seq[T]): (T, seq[T]) {.discardable.} =
   # make a mutable copy of the input
   var tape = newSeq[T]()
@@ -72,49 +76,30 @@ proc processProgram[T: SomeInteger](input: T, state: seq[T]): (T, seq[T]) {.disc
       return (output, tape)
     case opcode:
       of Opcode.add:
-        assert modes[2] == Mode.position
-        tape[tape[startIdx + 3]] = getArg(tape, startIdx + 1, modes[0]) +
-            getArg(tape, startIdx + 2, modes[1])
+        res() = first() + second()
         startIdx += opcode.len
       of Opcode.multiply:
-        assert modes[2] == Mode.position
-        tape[tape[startIdx + 3]] = getArg(tape, startIdx + 1, modes[0]) *
-            getArg(tape, startIdx + 2, modes[1])
+        res() = first() * second()
         startIdx += opcode.len
       of Opcode.input:
-        assert modes[0] == Mode.position
-        tape[tape[startIdx + 1]] = input
+        res() = input
         startIdx += opcode.len
       of Opcode.output:
-        output = getArg(tape, startIdx + 1, modes[0])
+        output = first()
         if output != 0:
           return (output, tape)
         startIdx += opcode.len
       of Opcode.jumpIfTrue:
-        if getArg(tape, startIdx + 1, modes[0]) != 0:
-          startIdx = getArg(tape, startIdx + 2, modes[1])
-        else:
-          startIdx += opcode.len
+        startIdx = if first() != 0: second()
+                   else: startIdx + opcode.len
       of Opcode.jumpIfFalse:
-        if getArg(tape, startIdx + 1, modes[0]) == 0:
-          startIdx = getArg(tape, startIdx + 2, modes[1])
-        else:
-          startIdx += opcode.len
+        startIdx = if first() == 0: second()
+                   else: startIdx + opcode.len
       of Opcode.lessThan:
-        assert modes[2] == Mode.position
-        if getArg(tape, startIdx + 1, modes[0]) < getArg(tape, startIdx + 2,
-            modes[1]):
-          tape[tape[startIdx + 3]] = 1
-        else:
-          tape[tape[startIdx + 3]] = 0
+        res() = T(first() < second())
         startIdx += opcode.len
       of Opcode.equals:
-        assert modes[2] == Mode.position
-        if getArg(tape, startIdx + 1, modes[0]) == getArg(tape, startIdx + 2,
-            modes[1]):
-          tape[tape[startIdx + 3]] = 1
-        else:
-          tape[tape[startIdx + 3]] = 0
+        res() = T(first() == second())
         startIdx += opcode.len
       of Opcode.halt:
         startIdx += opcode.len
