@@ -2,6 +2,7 @@ from algorithm import reversed
 from sequtils import map
 from strutils import split, parseInt
 from sugar import `=>`
+import timeit
 
 type
   Opcode = enum
@@ -51,7 +52,7 @@ proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode): T =
     of Mode.position: tape[tape[offset]]
     of Mode.immediate: tape[offset]
 
-proc processProgram[T: SomeInteger](input: T, state: seq[T]): (T, seq[T]) =
+proc processProgram[T: SomeInteger](input: T, state: seq[T]): (T, seq[T]) {.discardable.} =
   # make a mutable copy of the input
   var tape = newSeq[T]()
   for i in low(state)..high(state):
@@ -169,3 +170,6 @@ when isMainModule:
 
   let (p2output, _) = processProgram(5, unprocessedProgram)
   echo "part 2: ", p2output
+
+  echo timeGo(processProgram(1, unprocessedProgram))
+  echo timeGo(processProgram(5, unprocessedProgram))
