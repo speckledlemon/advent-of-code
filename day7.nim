@@ -57,30 +57,32 @@ proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode): T =
     of Mode.position: tape[tape[offset]]
     of Mode.immediate: tape[offset]
 
-template first(): untyped = getArg(tape, startIdx + 1, modes[0])
-template second(): untyped = getArg(tape, startIdx + 2, modes[1])
-template res(): untyped = tape[tape[startIdx + opcode.len - 1]]
+type
+  IntcodeComputer = object
+    program: seq[int]
+    # instructionPointer: int
+    output: int
+    # paused: bool
+    # halted: bool
 
-proc processProgram[T: SomeInteger](inputs: seq[T], state: seq[T]): (T, seq[T]) =
-  # make a mutable copy of the input
-  var tape = newSeq[T]()
-  for i in low(state)..high(state):
-    tape.add(state[i])
-  ##########
+template first(): untyped = getArg(result.program, startIdx + 1, modes[0])
+template second(): untyped = getArg(result.program, startIdx + 2, modes[1])
+template res(): untyped = result.program[result.program[startIdx + opcode.len - 1]]
+
+proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): IntcodeComputer =
+  result = computer
   var
-    startIdx: T = 0
-    inputCounter = 0
-    output: T
+    startIdx: T
+    inputCounter: T
     modes: seq[Mode]
     opcode: Opcode
   while true:
     try:
-      (modes, opcode) = parseInstruction($tape[startIdx])
+      (modes, opcode) = parseInstruction($result.program[startIdx])
     except RangeError:
-      return (output, tape)
+      return result
     except IndexError:
-      return (output, tape)
-    # echo startIdx, " ", opcode, " ", modes
+      return result
     case opcode:
       of Opcode.add:
         res() = first() + second()
@@ -93,9 +95,9 @@ proc processProgram[T: SomeInteger](inputs: seq[T], state: seq[T]): (T, seq[T]) 
         inputCounter += 1
         startIdx += opcode.len
       of Opcode.output:
-        output = first()
-        if output != 0:
-          return (output, tape)
+        result.output = first()
+        if result.output != 0:
+          return result
         startIdx += opcode.len
       of Opcode.jumpIfTrue:
         startIdx = if first() != 0: second()
@@ -115,11 +117,11 @@ proc processProgram[T: SomeInteger](inputs: seq[T], state: seq[T]): (T, seq[T]) 
 proc runAmplifierSequence(phases: openArray[int], program: seq[int], signal: int = 0): int =
   assert phases.len == 5
   let
-    (output1, _) = processProgram(@[phases[0], signal], program)
-    (output2, _) = processProgram(@[phases[1], output1], program)
-    (output3, _) = processProgram(@[phases[2], output2], program)
-    (output4, _) = processProgram(@[phases[3], output3], program)
-    (output5, _) = processProgram(@[phases[4], output4], program)
+    output1 = IntcodeComputer(program: program).processProgram(@[phases[0], signal]).output
+    output2 = IntcodeComputer(program: program).processProgram(@[phases[1], output1]).output
+    output3 = IntcodeComputer(program: program).processProgram(@[phases[2], output2]).output
+    output4 = IntcodeComputer(program: program).processProgram(@[phases[3], output3]).output
+    output5 = IntcodeComputer(program: program).processProgram(@[phases[4], output4]).output
   result = output5
 
 proc runAllPhases(program: seq[int]): int =
