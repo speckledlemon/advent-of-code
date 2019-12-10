@@ -60,25 +60,27 @@ proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode): T =
 type
   IntcodeComputer = object
     program: seq[int]
-    # instructionPointer: int
+    instructionPointer: int
     output: int
     # paused: bool
     # halted: bool
 
-template first(): untyped = getArg(result.program, startIdx + 1, modes[0])
-template second(): untyped = getArg(result.program, startIdx + 2, modes[1])
-template res(): untyped = result.program[result.program[startIdx + opcode.len - 1]]
+template first(): untyped =
+  getArg(result.program, result.instructionPointer + 1, modes[0])
+template second(): untyped =
+  getArg(result.program, result.instructionPointer + 2, modes[1])
+template res(): untyped =
+  result.program[result.program[result.instructionPointer + opcode.len - 1]]
 
 proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): IntcodeComputer =
   result = computer
   var
-    startIdx: T
     inputCounter: T
     modes: seq[Mode]
     opcode: Opcode
   while true:
     try:
-      (modes, opcode) = parseInstruction($result.program[startIdx])
+      (modes, opcode) = parseInstruction($result.program[result.instructionPointer])
     except RangeError:
       return result
     except IndexError:
@@ -86,33 +88,33 @@ proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): 
     case opcode:
       of Opcode.add:
         res() = first() + second()
-        startIdx += opcode.len
+        result.instructionPointer += opcode.len
       of Opcode.multiply:
         res() = first() * second()
-        startIdx += opcode.len
+        result.instructionPointer += opcode.len
       of Opcode.input:
         res() = inputs[inputCounter]
         inputCounter += 1
-        startIdx += opcode.len
+        result.instructionPointer += opcode.len
       of Opcode.output:
         result.output = first()
         if result.output != 0:
           return result
-        startIdx += opcode.len
+        result.instructionPointer += opcode.len
       of Opcode.jumpIfTrue:
-        startIdx = if first() != 0: second()
-                   else: startIdx + opcode.len
+        result.instructionPointer = if first() != 0: second()
+                   else: result.instructionPointer + opcode.len
       of Opcode.jumpIfFalse:
-        startIdx = if first() == 0: second()
-                   else: startIdx + opcode.len
+        result.instructionPointer = if first() == 0: second()
+                   else: result.instructionPointer + opcode.len
       of Opcode.lessThan:
         res() = T(first() < second())
-        startIdx += opcode.len
+        result.instructionPointer += opcode.len
       of Opcode.equals:
         res() = T(first() == second())
-        startIdx += opcode.len
+        result.instructionPointer += opcode.len
       of Opcode.halt:
-        startIdx += opcode.len
+        result.instructionPointer += opcode.len
 
 proc runAmplifierSequence(phases: openArray[int], program: seq[int], signal: int = 0): int =
   assert phases.len == 5
