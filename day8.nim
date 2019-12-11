@@ -1,10 +1,16 @@
 from algorithm import sort
 from sequtils import map, count, toSeq
-from strutils import parseInt
+from strutils import parseInt, join, replace
 from sugar import `=>`
 
 # `nimble install itertools`
 from itertools import chunked
+
+type
+  Pixel = enum
+    black = 0
+    white = 1
+    transparent = 2
 
 when isMainModule:
   let
@@ -30,3 +36,17 @@ when isMainModule:
     countDigitLeft = count(layerWithMinDigitCount, digitLeft)
     countDigitRight = count(layerWithMinDigitCount, digitRight)
   echo "part 1: ", countDigitLeft * countDigitRight
+
+  var
+    pixelAtLayer: int
+    visibleLayer: seq[int]
+  for pixelIdx in 0..pixelsPerLayer - 1:    
+    # strategy: find the first instance of a pixel that isn't transparent and
+    # that's the color that shows
+    for layerIdx in 0..numLayers - 1:
+      pixelAtLayer = layers[layerIdx][pixelIdx]
+      if Pixel(pixelAtLayer) != Pixel.transparent:
+        visibleLayer.add(pixelAtLayer)
+        break
+  for row in chunked(visibleLayer, width):
+    echo row.join().replace('1', '#').replace('0', ' ')
