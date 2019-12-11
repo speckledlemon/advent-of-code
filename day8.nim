@@ -28,10 +28,11 @@ proc part1(layers: Layers, digitToMin, digitLeft, digitRight: int): int =
     countDigitRight = count(layerWithMinDigitCount, digitRight)
   result = countDigitLeft * countDigitRight
 
-proc part2(layers: Layers, width: int) =
+proc part2(layers: Layers, width: int): string =
   var
     pixelAtLayer: int
     visibleLayer: seq[int]
+    rows: seq[string]
   for pixelIdx in 0..layers[0].len - 1:    
     # strategy: find the first instance of a pixel that isn't transparent and
     # that's the color that shows
@@ -41,7 +42,8 @@ proc part2(layers: Layers, width: int) =
         visibleLayer.add(pixelAtLayer)
         break
   for row in chunked(visibleLayer, width):
-    echo row.join().replace('1', '#').replace('0', ' ')
+    rows.add(row.join().replace('1', '#').replace('0', ' '))
+  result = rows.join("\n")
 
 when isMainModule:
   let
@@ -55,4 +57,5 @@ when isMainModule:
     layers = makeLayers(day8input, width, height)
   close(f)
   echo "part 1: ", part1(layers, digitToMin, digitLeft, digitRight)
-  part2(layers, width)
+  echo "part 2:"
+  echo part2(layers, width)
