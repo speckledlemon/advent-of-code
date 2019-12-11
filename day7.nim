@@ -2,6 +2,7 @@ from algorithm import reversed
 from sequtils import map
 from strutils import split, parseInt
 from sugar import `=>`
+import timeit
 
 # third-party, `nimble install itertools`
 from itertools import distinctPermutations
@@ -176,7 +177,7 @@ proc runAmplifierSequenceFeedback(phases: openArray[int], program: seq[int],
       result = amp5.output
       break
 
-proc runAllPhases(program: seq[int], feedbackMode: bool = false): int =
+proc runAllPhases(program: seq[int], feedbackMode: bool = false): int {.discardable.} =
   var thrustForPhases: int
   let
     allowedPhases = if not feedbackMode: [0, 1, 2, 3, 4]
@@ -213,3 +214,6 @@ when isMainModule:
   doAssert runAmplifierSequenceFeedback([9, 7, 8, 5, 6], part2TestProgram2) == 18216
   let p2output = runAllPhases(unprocessedProgram, true)
   echo "part 2: ", p2output
+
+  echo timeGo(runAllPhases(unprocessedProgram))
+  echo timeGo(runAllPhases(unprocessedProgram, true))
