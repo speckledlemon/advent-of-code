@@ -23,6 +23,9 @@ type
   Mode = enum
     position = 0
     immediate = 1
+  OutputMode {.pure.} = enum
+    ret
+    halt
 
 proc len(oc: Opcode): int =
   case oc:
@@ -62,8 +65,7 @@ type
     program: seq[int]
     instructionPointer: int
     output: int
-    # paused: bool
-    # halted: bool
+    halted: bool
 
 template first(): untyped =
   getArg(result.program, result.instructionPointer + 1, modes[0])
@@ -72,15 +74,18 @@ template second(): untyped =
 template res(): untyped =
   result.program[result.program[result.instructionPointer + opcode.len - 1]]
 
-proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): IntcodeComputer =
+proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
+    outputMode: OutputMode = ret): IntcodeComputer =
   result = computer
+  result.halted = false
   var
     inputCounter: T
     modes: seq[Mode]
     opcode: Opcode
   while true:
     try:
-      (modes, opcode) = parseInstruction($result.program[result.instructionPointer])
+      (modes, opcode) = parseInstruction($result.program[
+          result.instructionPointer])
     except RangeError:
       return result
     except IndexError:
@@ -98,15 +103,19 @@ proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): 
         result.instructionPointer += opcode.len
       of Opcode.output:
         result.output = first()
-        if result.output != 0:
-          return result
         result.instructionPointer += opcode.len
+        case outputMode
+        of OutputMode.ret:
+          if result.output != 0:
+            return result
+        of OutputMode.halt:
+          return result
       of Opcode.jumpIfTrue:
         result.instructionPointer = if first() != 0: second()
-                   else: result.instructionPointer + opcode.len
+                                    else: result.instructionPointer + opcode.len
       of Opcode.jumpIfFalse:
         result.instructionPointer = if first() == 0: second()
-                   else: result.instructionPointer + opcode.len
+                                    else: result.instructionPointer + opcode.len
       of Opcode.lessThan:
         res() = T(first() < second())
         result.instructionPointer += opcode.len
@@ -115,21 +124,67 @@ proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): 
         result.instructionPointer += opcode.len
       of Opcode.halt:
         result.instructionPointer += opcode.len
+        case outputMode:
+          of OutputMode.ret:
+            continue
+          of OutputMode.halt:
+            result.halted = true
+            break
 
-proc runAmplifierSequence(phases: openArray[int], program: seq[int], signal: int = 0): int =
+proc runAmplifierSequence(phases: openArray[int], program: seq[int],
+    signal: int = 0): int =
   assert phases.len == 5
   let
-    output1 = IntcodeComputer(program: program).processProgram(@[phases[0], signal]).output
-    output2 = IntcodeComputer(program: program).processProgram(@[phases[1], output1]).output
-    output3 = IntcodeComputer(program: program).processProgram(@[phases[2], output2]).output
-    output4 = IntcodeComputer(program: program).processProgram(@[phases[3], output3]).output
-    output5 = IntcodeComputer(program: program).processProgram(@[phases[4], output4]).output
+    output1 = IntcodeComputer(program: program).processProgram(@[phases[0],
+        signal]).output
+    output2 = IntcodeComputer(program: program).processProgram(@[phases[1],
+        output1]).output
+    output3 = IntcodeComputer(program: program).processProgram(@[phases[2],
+        output2]).output
+    output4 = IntcodeComputer(program: program).processProgram(@[phases[3],
+        output3]).output
+    output5 = IntcodeComputer(program: program).processProgram(@[phases[4],
+        output4]).output
   result = output5
 
-proc runAllPhases(program: seq[int]): int =
+proc runAmplifierSequenceFeedback(phases: openArray[int], program: seq[int],
+    signal: int = 0): int =
+  assert phases.len == 5
+  var
+    amp1 = IntcodeComputer(program: program).processProgram(@[phases[0],
+        signal], OutputMode.halt)
+    amp2 = IntcodeComputer(program: program).processProgram(@[phases[1],
+        amp1.output], OutputMode.halt)
+    amp3 = IntcodeComputer(program: program).processProgram(@[phases[2],
+        amp2.output], OutputMode.halt)
+    amp4 = IntcodeComputer(program: program).processProgram(@[phases[3],
+        amp3.output], OutputMode.halt)
+    amp5 = IntcodeComputer(program: program).processProgram(@[phases[4],
+        amp4.output], OutputMode.halt)
+  while true:
+    if not amp1.halted:
+      amp1 = amp1.processProgram(@[amp5.output], OutputMode.halt)
+    if not amp2.halted:
+      amp2 = amp2.processProgram(@[amp1.output], OutputMode.halt)
+    if not amp3.halted:
+      amp3 = amp3.processProgram(@[amp2.output], OutputMode.halt)
+    if not amp4.halted:
+      amp4 = amp4.processProgram(@[amp3.output], OutputMode.halt)
+    if not amp5.halted:
+      amp5 = amp5.processProgram(@[amp4.output], OutputMode.halt)
+    else:
+      result = amp5.output
+      break
+
+proc runAllPhases(program: seq[int], feedbackMode: bool = false): int =
   var thrustForPhases: int
-  for p in distinctPermutations([0, 1, 2, 3, 4]):
-    thrustForPhases = runAmplifierSequence(p, program)
+  let
+    allowedPhases = if not feedbackMode: [0, 1, 2, 3, 4]
+                    else: [5, 6, 7, 8, 9]
+    ampRunner = if not feedbackMode: runAmplifierSequence
+                else: runAmplifierSequenceFeedback
+  for p in distinctPermutations(allowedPhases):
+    thrustForPhases = ampRunner(p, program)
     if thrustForPhases > result:
       result = thrustForPhases
 
@@ -150,3 +205,11 @@ when isMainModule:
   close(f)
   let p1output = runAllPhases(unprocessedProgram)
   echo "part 1: ", p1output
+
+  let
+    part2TestProgram1 = stringToProgram("3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5")
+    part2TestProgram2 = stringToProgram("3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10")
+  doAssert runAmplifierSequenceFeedback([9, 8, 7, 6, 5], part2TestProgram1) == 139629729
+  doAssert runAmplifierSequenceFeedback([9, 7, 8, 5, 6], part2TestProgram2) == 18216
+  let p2output = runAllPhases(unprocessedProgram, true)
+  echo "part 2: ", p2output
