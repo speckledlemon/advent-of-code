@@ -2,6 +2,7 @@ from algorithm import sort
 from sequtils import map, count, toSeq
 from strutils import parseInt, join, replace
 from sugar import `=>`
+import timeit
 
 # `nimble install itertools`
 from itertools import chunked
@@ -16,7 +17,7 @@ type
 proc makeLayers(inp: string, width, height: int): Layers =
   toSeq(chunked(inp.map(d => parseInt($d)), width * height))
 
-proc part1(layers: Layers, digitToMin, digitLeft, digitRight: int): int =
+proc part1(layers: Layers, digitToMin, digitLeft, digitRight: int): int {.discardable.} =
   var digitToMinCountToLayerId: seq[(int, int)]
   for i, layer in layers:
     digitToMinCountToLayerId.add((count(layer, digitToMin), i))
@@ -28,7 +29,7 @@ proc part1(layers: Layers, digitToMin, digitLeft, digitRight: int): int =
     countDigitRight = count(layerWithMinDigitCount, digitRight)
   result = countDigitLeft * countDigitRight
 
-proc part2(layers: Layers, width: int): string =
+proc part2(layers: Layers, width: int): string {.discardable.} =
   var
     pixelAtLayer: int
     visibleLayer: seq[int]
@@ -59,3 +60,6 @@ when isMainModule:
   echo "part 1: ", part1(layers, digitToMin, digitLeft, digitRight)
   echo "part 2:"
   echo part2(layers, width)
+
+  echo timeGo(part1(layers, digitToMin, digitLeft, digitRight))
+  echo timeGo(part2(layers, width))
