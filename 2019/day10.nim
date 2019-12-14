@@ -1,5 +1,6 @@
 from algorithm import sorted
 from fenv import epsilon
+from math import pow, sqrt
 from strutils import strip, splitLines, join
 import sets
 
@@ -40,6 +41,12 @@ proc isBetween(a, b, c: Point): bool =
 proc isBetween(point: Point, line: Line): bool =
   isBetween(line.start, point, line.finish)
 
+proc distance(p1, p2: Point): float =
+  sqrt(pow(p1.x - p2.x, 2.0) + pow(p1.y - p2.y, 2.0))
+
+proc len(line: Line): float =
+  line.start.distance(line.finish)
+
 ## One assumption is that each point truly is a point: it is infinitely
 ## narrow, like a Dirac delta function in 2D space. Therefore, for a point P
 ## to be blocking the line of sight from the observer X to another point Q, P
@@ -64,10 +71,20 @@ proc getVisiblePointsFromGivenPoint(allPoints: seq[Point],
   for endpoint in candidates:
     if not rejected.contains(endpoint):
       lineSegment = (start: observerPoint, finish: endpoint)
+
+      # Find all points that fall inside this line segment.
+      var inSegment: seq[(float, Point)]
       for possibleBlocker in candidates:
-        if possibleBlocker != endpoint:
+        if possibleBlocker != lineSegment.finish:
           if possibleBlocker.isBetween(lineSegment):
-            rejected.incl(endpoint)
+            inSegment.add((possibleBlocker.distance(observerPoint), possibleBlocker))
+      echo lineSegment, " ", sorted(inSegment)
+      
+
+      # for possibleBlocker in candidates:
+      #   if possibleBlocker != endpoint:
+      #     if possibleBlocker.isBetween(lineSegment):
+      #       rejected.incl(endpoint)
   candidates - rejected
 
 proc getBestPoint(allPoints: seq[Point]): (int, Point) =
