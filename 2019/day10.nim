@@ -17,12 +17,12 @@ proc mapToPoints(mapString: string): seq[Point] =
     i = 0
     j = 0
   for line in splitLines(mapString):
-    j = 0
+    i = 0
     for c in line:
       if c == '#':
         result.add((x: float(i), y: float(j)))
-      j += 1
-    i += 1
+      i += 1
+    j += 1
 
 ## https://stackoverflow.com/a/328122
 proc isBetween(a, b, c: Point): bool =
@@ -86,16 +86,9 @@ when isMainModule:
 ...##
 """.strip()
     points = map.mapToPoints()
-  doAssert points == @[(x: 0.0, y: 1.0),
-                       (x: 0.0, y: 4.0),
-                       (x: 2.0, y: 0.0),
-                       (x: 2.0, y: 1.0),
-                       (x: 2.0, y: 2.0),
-                       (x: 2.0, y: 3.0),
-                       (x: 2.0, y: 4.0),
-                       (x: 3.0, y: 4.0),
-                       (x: 4.0, y: 3.0),
-                       (x: 4.0, y: 4.0)]
+  doAssert points == @[(x: 1.0, y: 0.0), (x: 4.0, y: 0.0), (x: 0.0, y: 2.0), (
+      x: 1.0, y: 2.0), (x: 2.0, y: 2.0), (x: 3.0, y: 2.0), (x: 4.0, y: 2.0), (
+      x: 4.0, y: 3.0), (x: 3.0, y: 4.0), (x: 4.0, y: 4.0)]
   doAssert points.getVisiblePointsFromGivenPoint(points[0]).len == 7
   doAssert points.getVisiblePointsFromGivenPoint(points[1]).len == 7
   doAssert points.getVisiblePointsFromGivenPoint(points[2]).len == 6
@@ -106,8 +99,7 @@ when isMainModule:
   doAssert points.getVisiblePointsFromGivenPoint(points[7]).len == 7
   doAssert points.getVisiblePointsFromGivenPoint(points[8]).len == 8
   doAssert points.getVisiblePointsFromGivenPoint(points[9]).len == 7
-  # typo in the problem, says (3, 4)
-  doAssert points.getBestPoint() == (8, (x: 4.0, y: 3.0))
+  doAssert points.getBestPoint() == (8, (x: 3.0, y: 4.0))
 
   let
     map2 = """......#.#.
@@ -167,9 +159,9 @@ when isMainModule:
 #.#.#.#####.####.###
 ###.##.####.##.#..##
 """
-  doAssert map2.mapToPoints().getBestPoint() == (33, (x: 8.0, y: 5.0))
-  doAssert map3.mapToPoints().getBestPoint() == (35, (x: 2.0, y: 1.0))
-  doAssert map4.mapToPoints().getBestPoint() == (41, (x: 3.0, y: 6.0))
-  doAssert map5.mapToPoints().getBestPoint() == (210, (x: 13.0, y: 11.0))
+  doAssert map2.mapToPoints().getBestPoint() == (33, (x: 5.0, y: 8.0))
+  doAssert map3.mapToPoints().getBestPoint() == (35, (x: 1.0, y: 2.0))
+  doAssert map4.mapToPoints().getBestPoint() == (41, (x: 6.0, y: 3.0))
+  doAssert map5.mapToPoints().getBestPoint() == (210, (x: 11.0, y: 13.0))
 
   echo "part 1: ", readAllLines("day10_input.txt").join("\n").mapToPoints().getBestPoint()[0]
