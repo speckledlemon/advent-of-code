@@ -62,11 +62,15 @@ proc extendProgram[T: SomeInteger](program: seq[T], newLen: int): seq[T] =
   while result.len < newLen:
     result.add(0)
 
-proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode, relativeBase: T = 0): T =
+proc getPtr[T: SomeInteger](tape: seq[T], offset: T, mode: Mode, relativeBase: T = 0): T =
   case mode:
-    of Mode.position: tape[tape[offset]]
-    of Mode.immediate: tape[offset]
-    of Mode.relative: tape[tape[offset] + relativeBase]
+    of Mode.position: tape[offset]
+    of Mode.immediate: offset
+    of Mode.relative: tape[offset] + relativeBase
+
+proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode, relativeBase: T = 0): T =
+  let programPtr = getPtr(tape, offset, mode, relativeBase)
+  tape[programPtr]
 
 type
   IntcodeComputer = object
@@ -171,12 +175,26 @@ proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
 
 when isMainModule:
 
+  doAssert parseInstruction("103") == (@[Mode.immediate, Mode.position, Mode.position], Opcode.input)
+  doAssert parseInstruction("203") == (@[Mode.relative, Mode.position, Mode.position], Opcode.input)
+  doAssert parseInstruction("204") == (@[Mode.relative, Mode.position, Mode.position], Opcode.output)
+  doAssert parseInstruction("109") == (@[Mode.immediate, Mode.position, Mode.position], Opcode.adjustRelativeBase)
+
   let
     emptyInput = newSeq[int]()
     tp1 = @[-1]
     tp2 = @[1, 2, 3, 4]
   doAssert extendProgram(tp1, 4) == @[-1, 0, 0, 0]
   doAssert extendProgram(tp2, 2) == @[1, 2, 3, 4]
+
+  let program0 = stringToProgram("109,19,204,-34")
+  var computer0 = IntcodeComputer(program: program0, relativeBase: 2000)
+  computer0 = computer0.processProgram(emptyInput)
+  # Because both the "adjustRelativeBase" and "output" instructions are
+  # executed
+  doAssert computer0.instructionPointer == 4
+  doAssert computer0.relativeBase == 2019
+  doAssert getPtr(program0, 3, Mode.relative, 2019) == 1985
 
   # Program taken from
   # https://www.reddit.com/r/adventofcode/comments/eaboz7/quine_for_preday9_intcode_computer/
@@ -213,13 +231,9 @@ when isMainModule:
   var
     computer = IntcodeComputer(program: unprocessedProgram)
     day9output = newSeq[int]()
-  echo computer
-  computer = computer.processProgram(@[1])
+  computer = computer.processProgram(@[1], OutputMode.halt)
   day9output.add(computer.output)
-  echo computer
-  # while not computer.halted:
-  for i in 0..25:
-    computer = computer.processProgram(emptyInput)
+  while not computer.halted:
+    computer = computer.processProgram(emptyInput, OutputMode.halt)
     day9output.add(computer.output)
-    echo computer
   echo day9output
