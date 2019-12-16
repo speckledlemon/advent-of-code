@@ -278,13 +278,13 @@ when isMainModule:
     f = open("day9_input.txt")
     unprocessedProgram = readLine(f).stringToProgram()
   close(f)
-  var
-    computer = IntcodeComputer(program: unprocessedProgram)
-    day9output = newSeq[int]()
+  var computer = IntcodeComputer(program: unprocessedProgram)
   while true:
     computer = computer.processProgram(@[1], OutputMode.halt)
-    day9output.add(computer.output)
     if computer.halted or computer.returned:
       break
-  doAssert day9output.len == 1
-  echo "part 1: ", day9output[0]
+  echo "part 1: ", computer.output
+  computer = computer.processProgram(@[2], OutputMode.halt)
+  while not computer.returned:
+    computer = computer.processProgram(@[2], OutputMode.halt)
+  echo "part 2: ", computer.output
