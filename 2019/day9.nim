@@ -98,11 +98,14 @@ template second(): untyped =
   getArg(result.program, result.instructionPointer + 2, modes[1],
       result.relativeBase)
 template res(): untyped =
+  let
+    pos = opcode.len - 1
+    mode = modes[pos - 1]
   # TODO why isn't it possible for the variables in the template to be visible
   # here?
-  extendProgram(modes[2])
-  let actualPtr = getPtr(result.program, result.instructionPointer +
-      opcode.len - 1, modes[2], result.relativeBase)
+  extendProgram(mode)
+  let actualPtr = getPtr(result.program, result.instructionPointer + pos,
+                         mode, result.relativeBase)
   result.program[actualPtr]
 
 proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
@@ -112,10 +115,10 @@ proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
   var inputCounter: T
   while true:
     result = result.step(inputs, outputMode, inputCounter)
-    if result.halted and outputMode == OutputMode.halt:
+    if result.halted:
       break
     if result.output != 0 and outputMode == OutputMode.ret:
-      return result
+      break
 
 proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
                           outputMode: OutputMode, inputCounter: var T): IntcodeComputer =
@@ -124,7 +127,8 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
     modes: seq[Mode]
     opcode: Opcode
   try:
-    (modes, opcode) = parseInstruction($result.program[result.instructionPointer])
+    (modes, opcode) = parseInstruction($result.program[
+        result.instructionPointer])
   except RangeError:
     return result
   except IndexError:
@@ -174,10 +178,14 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
 
 when isMainModule:
 
-  doAssert parseInstruction("103") == (@[Mode.immediate, Mode.position, Mode.position], Opcode.input)
-  doAssert parseInstruction("203") == (@[Mode.relative, Mode.position, Mode.position], Opcode.input)
-  doAssert parseInstruction("204") == (@[Mode.relative, Mode.position, Mode.position], Opcode.output)
-  doAssert parseInstruction("109") == (@[Mode.immediate, Mode.position, Mode.position], Opcode.adjustRelativeBase)
+  doAssert parseInstruction("103") == (@[Mode.immediate, Mode.position,
+      Mode.position], Opcode.input)
+  doAssert parseInstruction("203") == (@[Mode.relative, Mode.position,
+      Mode.position], Opcode.input)
+  doAssert parseInstruction("204") == (@[Mode.relative, Mode.position,
+      Mode.position], Opcode.output)
+  doAssert parseInstruction("109") == (@[Mode.immediate, Mode.position,
+      Mode.position], Opcode.adjustRelativeBase)
 
   let
     emptyInput = newSeq[int]()
@@ -205,9 +213,12 @@ when isMainModule:
     redditQuineComputer = IntcodeComputer(program: redditQuineInput)
     redditQuineOutput = newSeq[int]()
   while not redditQuineComputer.halted:
-    redditQuineComputer = redditQuineComputer.processProgram(emptyInput, OutputMode.halt)
+    redditQuineComputer = redditQuineComputer.processProgram(emptyInput,
+        OutputMode.halt)
     if not redditQuineComputer.halted:
       redditQuineOutput.add(redditQuineComputer.output)
+  echo redditQuineInput
+  echo redditQuineOutput
   doAssert redditQuineInput == redditQuineOutput
 
   let program1 = stringToProgram("109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99")
@@ -217,7 +228,7 @@ when isMainModule:
   while not computer1.halted:
     computer1 = computer1.processProgram(emptyInput, OutputMode.halt)
     if not computer1.halted:
-       computer1Output.add(computer1.output)
+      computer1Output.add(computer1.output)
   doAssert program1 == computer1Output
 
   let
@@ -225,6 +236,35 @@ when isMainModule:
     computer3 = IntcodeComputer(program: stringToProgram("104,1125899906842624,99"))
   doAssert computer2.processProgram(emptyInput).output == 34915192 * 34915192
   doAssert computer3.processProgram(emptyInput).output == 1125899906842624
+
+  let
+    computer4inputval = 69
+    computer4input = @[computer4inputval]
+    computer4program = @[109, 1, 203, 2, 204, 2, 99]
+    computer4modifiedProgram = @[109, 1, 203, computer4inputval, 204, 2, 99]
+  var
+    computer4 = IntcodeComputer(program: computer4program)
+    inputCounter = 0
+
+  doAssert parseInstruction($computer4.program[computer4.instructionPointer]) == (@[immediate, position, position], adjustRelativeBase)
+  computer4 = computer4.step(emptyInput, OutputMode.ret, inputCounter)
+  doAssert computer4.instructionPointer == 2
+  doAssert computer4.relativeBase == 1
+  doAssert computer4.output == 0
+  doAssert computer4.program == computer4program
+  doAssert parseInstruction($computer4.program[computer4.instructionPointer]) == (@[relative, position, position], input)
+  doAssert getPtr(computer4.program, computer4.instructionPointer + 1, relative, computer4.relativeBase) == 3
+  doAssert getPtr(computer4program, 2 + 1, relative, 1) == 3
+  computer4 = computer4.step(computer4input, OutputMode.ret, inputCounter)
+  doAssert computer4.instructionPointer == 4
+  doAssert computer4.relativeBase == 1
+  doAssert computer4.output == 0
+  doAssert computer4.program == computer4modifiedProgram
+  doAssert parseInstruction($computer4.program[computer4.instructionPointer]) == (@[relative, position, position], output)
+  computer4 = computer4.step(emptyInput, OutputMode.ret, inputCounter)
+  doAssert computer4.instructionPointer == 6
+  doAssert computer4.relativeBase == 1
+  doAssert computer4.output == computer4inputval
 
   let
     f = open("day9_input.txt")
