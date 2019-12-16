@@ -81,14 +81,7 @@ type
     halted: bool
 
 template extendProgram(mode: Mode): untyped =
-  let
-    innerPtr = result.instructionPointer + opcode.len - 1
-    outerPtr = result.program[innerPtr]
-    outerPtrWithRelativeOffset = outerPtr + result.relativeBase
-    actualPtr = case mode:
-                  of Mode.immediate: innerPtr
-                  of Mode.position: outerPtr
-                  of Mode.relative: outerPtrWithRelativeOffset
+  let actualPtr = getPtr(result.program, result.instructionPointer + opcode.len - 1, mode, result.relativeBase)
   if actualPtr > high(result.program):
       result.program = extendProgram(result.program, 2 * actualPtr)
 template first(): untyped =
@@ -103,14 +96,7 @@ template res(): untyped =
   # TODO why isn't it possible for the variables in the template to be visible
   # here?
   extendProgram(modes[2])
-  let
-    innerPtr = result.instructionPointer + opcode.len - 1
-    outerPtr = result.program[innerPtr]
-    outerPtrWithRelativeOffset = outerPtr + result.relativeBase
-    actualPtr = case modes[2]:
-                  of Mode.immediate: innerPtr
-                  of Mode.position: outerPtr
-                  of Mode.relative: outerPtrWithRelativeOffset
+  let actualPtr = getPtr(result.program, result.instructionPointer + opcode.len - 1, modes[2], result.relativeBase)
   result.program[actualPtr]
 
 proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
