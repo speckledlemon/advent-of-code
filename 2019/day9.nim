@@ -80,6 +80,7 @@ type
     instructionPointer: int
     relativeBase: int
     output: int
+    returned: bool
     halted: bool
 
 template extendProgram(mode: Mode): untyped =
@@ -115,14 +116,21 @@ proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
   var inputCounter: T
   while true:
     result = result.step(inputs, outputMode, inputCounter)
-    if result.halted:
+    if result.returned:
       break
-    if result.output != 0 and outputMode == OutputMode.ret:
-      break
+    else:
+      case outputMode:
+        of OutputMode.ret:
+          if result.output != 0:
+            break
+        of OutputMode.halt:
+          if result.halted:
+            break
 
 proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
                           outputMode: OutputMode, inputCounter: var T): IntcodeComputer =
   result = computer
+  result.returned = false
   var
     modes: seq[Mode]
     opcode: Opcode
@@ -150,8 +158,10 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
       case outputMode:
         of OutputMode.ret:
           if result.output != 0:
+            result.returned = true
             return result
         of OutputMode.halt:
+          result.returned = true
           return result
     of Opcode.jumpIfTrue:
       result.instructionPointer = if first() != 0: second()
@@ -217,8 +227,6 @@ when isMainModule:
         OutputMode.halt)
     if not redditQuineComputer.halted:
       redditQuineOutput.add(redditQuineComputer.output)
-  echo redditQuineInput
-  echo redditQuineOutput
   doAssert redditQuineInput == redditQuineOutput
 
   let program1 = stringToProgram("109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99")
@@ -273,9 +281,10 @@ when isMainModule:
   var
     computer = IntcodeComputer(program: unprocessedProgram)
     day9output = newSeq[int]()
-  computer = computer.processProgram(@[1], OutputMode.halt)
-  day9output.add(computer.output)
-  while not computer.halted:
-    computer = computer.processProgram(emptyInput, OutputMode.halt)
+  while true:
+    computer = computer.processProgram(@[1], OutputMode.halt)
     day9output.add(computer.output)
-  echo day9output
+    if computer.halted or computer.returned:
+      break
+  doAssert day9output.len == 1
+  echo "part 1: ", day9output[0]
