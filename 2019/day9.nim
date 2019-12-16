@@ -284,7 +284,8 @@ when isMainModule:
     if computer.halted or computer.returned:
       break
   echo "part 1: ", computer.output
-  computer = computer.processProgram(@[2], OutputMode.halt)
+  computer.halted = false
+  computer.returned = false
   while not computer.returned:
     computer = computer.processProgram(@[2], OutputMode.halt)
   echo "part 2: ", computer.output
