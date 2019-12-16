@@ -124,8 +124,7 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
     modes: seq[Mode]
     opcode: Opcode
   try:
-    (modes, opcode) = parseInstruction($result.program[
-        result.instructionPointer])
+    (modes, opcode) = parseInstruction($result.program[result.instructionPointer])
   except RangeError:
     return result
   except IndexError:
@@ -188,10 +187,13 @@ when isMainModule:
   doAssert extendProgram(tp2, 2) == @[1, 2, 3, 4]
 
   let program0 = stringToProgram("109,19,204,-34")
-  var computer0 = IntcodeComputer(program: program0, relativeBase: 2000)
-  computer0 = computer0.processProgram(emptyInput)
-  # Because both the "adjustRelativeBase" and "output" instructions are
-  # executed
+  var
+    computer0 = IntcodeComputer(program: program0, relativeBase: 2000)
+    inputCounter0 = 0
+  computer0 = computer0.step(emptyInput, ret, inputCounter0)
+  doAssert computer0.instructionPointer == 2
+  doAssert computer0.relativeBase == 2019
+  computer0 = computer0.step(emptyInput, ret, inputCounter0)
   doAssert computer0.instructionPointer == 4
   doAssert computer0.relativeBase == 2019
   doAssert getPtr(program0, 3, Mode.relative, 2019) == 1985
