@@ -2,6 +2,7 @@ from algorithm import reversed
 from sequtils import map
 from strutils import split, parseInt
 from sugar import `=>`
+import timeit
 
 proc stringToProgram(s: string): seq[int] =
   s.split(',').map(i => parseInt(i))
@@ -184,6 +185,14 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
         of OutputMode.halt:
           result.halted = true
 
+proc run(unprocessedProgram: seq[int], input: int): int {.discardable.} =
+  var computer = IntcodeComputer(program: unprocessedProgram)
+  while true:
+    computer = computer.processProgram(@[input], OutputMode.halt)
+    if computer.halted or computer.returned:
+      break
+  result = computer.output
+
 when isMainModule:
 
   doAssert parseInstruction("103") == (@[Mode.immediate, Mode.position,
@@ -276,14 +285,7 @@ when isMainModule:
     f = open("day9_input.txt")
     unprocessedProgram = readLine(f).stringToProgram()
   close(f)
-  var computer = IntcodeComputer(program: unprocessedProgram)
-  while true:
-    computer = computer.processProgram(@[1], OutputMode.halt)
-    if computer.halted or computer.returned:
-      break
-  echo "part 1: ", computer.output
-  computer.halted = false
-  computer.returned = false
-  while not computer.returned:
-    computer = computer.processProgram(@[2], OutputMode.halt)
-  echo "part 2: ", computer.output
+  echo "part 1: ", run(unprocessedProgram, 1)
+  echo "part 2: ", run(unprocessedProgram, 2)
+  echo timeGo(run(unprocessedProgram, 1))
+  echo timeGo(run(unprocessedProgram, 2))
