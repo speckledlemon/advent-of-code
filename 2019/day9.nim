@@ -62,13 +62,15 @@ proc extendProgram[T: SomeInteger](program: seq[T], newLen: int): seq[T] =
   while result.len < newLen:
     result.add(0)
 
-proc getPtr[T: SomeInteger](tape: seq[T], offset: T, mode: Mode, relativeBase: T = 0): T =
+proc getPtr[T: SomeInteger](tape: seq[T], offset: T, mode: Mode,
+    relativeBase: T = 0): T =
   case mode:
     of Mode.position: tape[offset]
     of Mode.immediate: offset
     of Mode.relative: tape[offset] + relativeBase
 
-proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode, relativeBase: T = 0): T =
+proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode,
+    relativeBase: T = 0): T =
   let programPtr = getPtr(tape, offset, mode, relativeBase)
   tape[programPtr]
 
@@ -81,83 +83,95 @@ type
     halted: bool
 
 template extendProgram(mode: Mode): untyped =
-  let actualPtr = getPtr(result.program, result.instructionPointer + opcode.len - 1, mode, result.relativeBase)
+  let actualPtr = getPtr(result.program, result.instructionPointer +
+      opcode.len - 1, mode, result.relativeBase)
   if actualPtr > high(result.program):
-      result.program = extendProgram(result.program, 2 * actualPtr)
+    result.program = extendProgram(result.program, 2 * actualPtr)
 template first(): untyped =
   # TODO is the extend necessary here?
   extendProgram(modes[0])
-  getArg(result.program, result.instructionPointer + 1, modes[0], result.relativeBase)
+  getArg(result.program, result.instructionPointer + 1, modes[0],
+      result.relativeBase)
 template second(): untyped =
   # TODO is the extend necessary here?
   extendProgram(modes[1])
-  getArg(result.program, result.instructionPointer + 2, modes[1], result.relativeBase)
+  getArg(result.program, result.instructionPointer + 2, modes[1],
+      result.relativeBase)
 template res(): untyped =
   # TODO why isn't it possible for the variables in the template to be visible
   # here?
   extendProgram(modes[2])
-  let actualPtr = getPtr(result.program, result.instructionPointer + opcode.len - 1, modes[2], result.relativeBase)
+  let actualPtr = getPtr(result.program, result.instructionPointer +
+      opcode.len - 1, modes[2], result.relativeBase)
   result.program[actualPtr]
 
 proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
-    outputMode: OutputMode = ret): IntcodeComputer =
+                                    outputMode: OutputMode = ret): IntcodeComputer =
   result = computer
   result.halted = false
+  var inputCounter: T
+  while true:
+    result = result.step(inputs, outputMode, inputCounter)
+    if result.halted and outputMode == OutputMode.halt:
+      break
+    if result.output != 0 and outputMode == OutputMode.ret:
+      return result
+
+proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
+                          outputMode: OutputMode, inputCounter: var T): IntcodeComputer =
+  result = computer
   var
-    inputCounter: T
     modes: seq[Mode]
     opcode: Opcode
-  while true:
-    try:
-      (modes, opcode) = parseInstruction($result.program[
-          result.instructionPointer])
-    except RangeError:
-      return result
-    except IndexError:
-      return result
-    case opcode:
-      of Opcode.add:
-        res() = first() + second()
-        result.instructionPointer += opcode.len
-      of Opcode.multiply:
-        res() = first() * second()
-        result.instructionPointer += opcode.len
-      of Opcode.input:
-        res() = inputs[inputCounter]
-        inputCounter += 1
-        result.instructionPointer += opcode.len
-      of Opcode.output:
-        result.output = first()
-        result.instructionPointer += opcode.len
-        case outputMode
+  try:
+    (modes, opcode) = parseInstruction($result.program[
+        result.instructionPointer])
+  except RangeError:
+    return result
+  except IndexError:
+    return result
+  case opcode:
+    of Opcode.add:
+      res() = first() + second()
+      result.instructionPointer += opcode.len
+    of Opcode.multiply:
+      res() = first() * second()
+      result.instructionPointer += opcode.len
+    of Opcode.input:
+      res() = inputs[inputCounter]
+      inputCounter += 1
+      result.instructionPointer += opcode.len
+    of Opcode.output:
+      result.output = first()
+      result.instructionPointer += opcode.len
+      case outputMode:
         of OutputMode.ret:
           if result.output != 0:
             return result
         of OutputMode.halt:
           return result
-      of Opcode.jumpIfTrue:
-        result.instructionPointer = if first() != 0: second()
-                                    else: result.instructionPointer + opcode.len
-      of Opcode.jumpIfFalse:
-        result.instructionPointer = if first() == 0: second()
-                                    else: result.instructionPointer + opcode.len
-      of Opcode.lessThan:
-        res() = T(first() < second())
-        result.instructionPointer += opcode.len
-      of Opcode.equals:
-        res() = T(first() == second())
-        result.instructionPointer += opcode.len
-      of Opcode.adjustRelativeBase:
-        result.relativeBase += first()
-        result.instructionPointer += opcode.len
-      of Opcode.halt:
-        result.instructionPointer += opcode.len
-        case outputMode:
-          of OutputMode.ret:
-            continue
-          of OutputMode.halt:
-            result.halted = true
-            break
+    of Opcode.jumpIfTrue:
+      result.instructionPointer = if first() != 0: second()
+                                  else: result.instructionPointer + opcode.len
+    of Opcode.jumpIfFalse:
+      result.instructionPointer = if first() == 0: second()
+                                  else: result.instructionPointer + opcode.len
+    of Opcode.lessThan:
+      res() = T(first() < second())
+      result.instructionPointer += opcode.len
+    of Opcode.equals:
+      res() = T(first() == second())
+      result.instructionPointer += opcode.len
+    of Opcode.adjustRelativeBase:
+      result.relativeBase += first()
+      result.instructionPointer += opcode.len
+    of Opcode.halt:
+      result.instructionPointer += opcode.len
+      case outputMode:
+        of OutputMode.ret:
+          return result
+        of OutputMode.halt:
+          result.halted = true
 
 when isMainModule:
 
