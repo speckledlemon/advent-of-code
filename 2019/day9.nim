@@ -84,26 +84,24 @@ type
     halted: bool
 
 template extendProgram(mode: Mode): untyped =
-  let actualPtr = getPtr(result.program, result.instructionPointer +
-      opcode.len - 1, mode, result.relativeBase)
+  let
+    pos = opcode.len - 1
+    actualPtr = getPtr(result.program, result.instructionPointer + pos,
+                       mode, result.relativeBase)
   if actualPtr > high(result.program):
     result.program = extendProgram(result.program, 2 * actualPtr)
 template first(): untyped =
-  # TODO is the extend necessary here?
   extendProgram(modes[0])
   getArg(result.program, result.instructionPointer + 1, modes[0],
-      result.relativeBase)
+         result.relativeBase)
 template second(): untyped =
-  # TODO is the extend necessary here?
   extendProgram(modes[1])
   getArg(result.program, result.instructionPointer + 2, modes[1],
-      result.relativeBase)
+         result.relativeBase)
 template res(): untyped =
   let
     pos = opcode.len - 1
     mode = modes[pos - 1]
-  # TODO why isn't it possible for the variables in the template to be visible
-  # here?
   extendProgram(mode)
   let actualPtr = getPtr(result.program, result.instructionPointer + pos,
                          mode, result.relativeBase)
