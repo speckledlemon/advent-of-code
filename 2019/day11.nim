@@ -1,0 +1,56 @@
+type
+  Direction = enum
+    up
+    down
+    left
+    right
+  Point = enum
+    black
+    white
+    robot
+  Grid = seq[seq[Point]]
+  State = object
+    grid = Grid
+
+## Print the current state of the robot on the hull w/ panel colors in the
+## same format as the problem examples.
+proc `$`(state: State): str =
+  $grid
+
+when isMainModule:
+  let
+    state0 = """
+.....
+.....
+..^..
+.....
+.....
+"""
+    state1 = """
+.....
+.....
+.<#..
+.....
+.....
+"""
+    state2 = """
+.....
+.....
+..#..
+.v...
+.....
+"""
+    state3 = """
+.....
+.....
+..^..
+.##..
+.....
+"""
+    state4 = """
+.....
+..<#.
+...#.
+.##..
+.....
+"""
