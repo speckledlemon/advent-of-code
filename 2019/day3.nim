@@ -5,6 +5,7 @@ import sequtils
 import strutils
 import sets
 import ./aoc_utils
+import unittest
 
 type
   Point = tuple[x: int, y: int]
@@ -154,32 +155,38 @@ proc getFewestCombinedSteps(strDirections1: string, strDirections2: string): int
     )
   )[0][0]
 
+suite "day3":
+  test "makeLinesFromString":
+    check: makeLinesFromString("R8,U5,L5,D3,") == @[(start: (x: 0, y: 0), finish: (x: 8, y: 0)),
+                                                   (start: (x: 8, y: 0), finish: (x: 8, y: 5)),
+                                                   (start: (x: 8, y: 5), finish: (x: 3, y: 5)),
+                                                   (start: (x: 3, y: 5), finish: (x: 3, y: 2))]
+    check: makeLinesFromString("U7,R6,D4,L4") == @[(start: (x: 0, y: 0), finish: (x: 0, y: 7)),
+                                                  (start: (x: 0, y: 7), finish: (x: 6, y: 7)),
+                                                  (start: (x: 6, y: 7), finish: (x: 6, y: 3)),
+                                                  (start: (x: 6, y: 3), finish: (x: 2, y: 3))]
+  test "findInterections":
+    let
+      lines1 = makeLinesFromString("R8,U5,L5,D3,")
+      lines2 = makeLinesFromString("U7,R6,D4,L4")
+    check(findIntersections(lines1, lines2) == toHashSet(@[(x: 6, y: 5), (x: 3, y: 3)]))
+
+  test "getClosestIntersection":
+    check: getClosestIntersection("R8,U5,L5,D3,", "U7,R6,D4,L4") == 6
+    check: getClosestIntersection("R75,D30,R83,U83,L12,D49,R71,U7,L72",
+                                  "U62,R66,U55,R34,D71,R55,D58,R83") == 159
+    check: getClosestIntersection("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51",
+                                  "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7") == 135
+
+  test "getFewestCombinedSteps":
+    check: getFewestCombinedSteps("R8,U5,L5,D3,", "U7,R6,D4,L4") == 30
+    check: getFewestCombinedSteps("R75,D30,R83,U83,L12,D49,R71,U7,L72",
+                                  "U62,R66,U55,R34,D71,R55,D58,R83") == 610
+    check: getFewestCombinedSteps("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51",
+                                  "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7") == 410
+
+
 when isMainModule:
-  # assert makePointsFromString("R8,U5,L5,D3,") == @[(x: 8, y: 0), (x: 8, y: 5), (x: 3, y: 5), (x: 3, y: 2)]
-  # assert makePointsFromString("U7,R6,D4,L4") == @[(x: 0, y: 7), (x: 6, y: 7), (x: 6, y: 3), (x: 2, y: 3)]
-  assert makeLinesFromString("R8,U5,L5,D3,") == @[(start: (x: 0, y: 0), finish: (x: 8, y: 0)),
-                                                  (start: (x: 8, y: 0), finish: (x: 8, y: 5)),
-                                                  (start: (x: 8, y: 5), finish: (x: 3, y: 5)),
-                                                  (start: (x: 3, y: 5), finish: (x: 3, y: 2))]
-  assert makeLinesFromString("U7,R6,D4,L4") == @[(start: (x: 0, y: 0), finish: (x: 0, y: 7)),
-                                                 (start: (x: 0, y: 7), finish: (x: 6, y: 7)),
-                                                 (start: (x: 6, y: 7), finish: (x: 6, y: 3)),
-                                                 (start: (x: 6, y: 3), finish: (x: 2, y: 3))]
-  assert findIntersections(makeLinesFromString("R8,U5,L5,D3,"), makeLinesFromString("U7,R6,D4,L4")) == toHashSet(@[(x: 6, y: 5), (x: 3, y: 3)])
-  assert getClosestIntersection("R8,U5,L5,D3,", "U7,R6,D4,L4") == 6
-  assert getClosestIntersection("R75,D30,R83,U83,L12,D49,R71,U7,L72",
-                                "U62,R66,U55,R34,D71,R55,D58,R83") == 159
-  assert getClosestIntersection("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51",
-                                "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7") == 135
-
   let inputs = readAllLines("day3_input.txt")
-
   echo "part 1: ", getClosestIntersection(inputs[0], inputs[1])
-
-  assert getFewestCombinedSteps("R8,U5,L5,D3,", "U7,R6,D4,L4") == 30
-  assert getFewestCombinedSteps("R75,D30,R83,U83,L12,D49,R71,U7,L72",
-                                "U62,R66,U55,R34,D71,R55,D58,R83") == 610
-  assert getFewestCombinedSteps("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51",
-                                "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7") == 410
-
   echo "part 2: ", getFewestCombinedSteps(inputs[0], inputs[1])

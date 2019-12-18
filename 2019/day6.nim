@@ -4,6 +4,7 @@ from sugar import `=>`
 import tables
 import sets
 import timeit
+import unittest
 
 proc readAllLines(filename: string): seq[string] =
   result = newSeq[string]()
@@ -82,16 +83,17 @@ proc countOrbits(g: Graph, startNode: string, depth: int = 1): int {.discardable
 proc numOrbitalTransfers(g: Graph): int {.discardable.} =
   dijkstra(g, "YOU")[0]["SAN"] - 2
 
-when isMainModule:
-  # A - B - C
-  doAssert countOrbits(fromPairs(@[("A", "B"), ("B", "C")]), "A") == 3
-  # A - B - C - D
-  doAssert countOrbits(fromPairs(@[("A", "B"), ("B", "C"), ("C", "D")]), "A") == 6
-  # A - B - C
-  #      \
-  #       D
-  doAssert countOrbits(fromPairs(@[("A", "B"), ("B", "C"), ("B", "D")]), "A") == 5
-  let testOrbit = """
+suite "day6":
+  test "countOrbits1":
+    # A - B - C
+    check: countOrbits(fromPairs(@[("A", "B"), ("B", "C")]), "A") == 3
+    # A - B - C - D
+    check: countOrbits(fromPairs(@[("A", "B"), ("B", "C"), ("C", "D")]), "A") == 6
+    # A - B - C
+    #      \
+    #       D
+    check: countOrbits(fromPairs(@[("A", "B"), ("B", "C"), ("B", "D")]), "A") == 5
+    let testOrbit = """
 COM)B
 B)C
 C)D
@@ -103,24 +105,19 @@ D)I
 E)J
 J)K
 K)L
-""".strip().split().linesToPairs()
-  #         G - H       J - K - L
-  #        /           /
-  # COM - B - C - D - E - F
-  #                \
-  #                 I
-  # direct orbits is total number of edges: 11
-  # indirect orbits is sum of (each node's depth - 1)
-  # total orbits is depth of each node
-  doAssert countOrbits(fromPairs(testOrbit), "COM") == 42
+  """.strip().split().linesToPairs()
+    #         G - H       J - K - L
+    #        /           /
+    # COM - B - C - D - E - F
+    #                \
+    #                 I
+    # direct orbits is total number of edges: 11
+    # indirect orbits is sum of (each node's depth - 1)
+    # total orbits is depth of each node
+    check: countOrbits(fromPairs(testOrbit), "COM") == 42
 
-  let
-    ps = readAllLines("day6_input.txt").linesToPairs()
-    part1graph = ps.fromPairs()
-
-  echo "part 1: ", part1graph.countOrbits("COM")
-
-  let part2example = """
+  test "countOrbits2":
+    let part2example = """
 COM)B
 B)C
 C)D
@@ -134,8 +131,17 @@ J)K
 K)L
 K)YOU
 I)SAN
-""".strip().split().linesToPairs().fromPairs(false)
-  doAssert numOrbitalTransfers(part2example) == 4
+  """.strip().split().linesToPairs().fromPairs(false)
+    check: numOrbitalTransfers(part2example) == 4
+
+when isMainModule:
+
+  let
+    ps = readAllLines("day6_input.txt").linesToPairs()
+    part1graph = ps.fromPairs()
+
+  echo "part 1: ", part1graph.countOrbits("COM")
+
   let part2graph = ps.fromPairs(false)
   echo "part 2: ", part2graph.numOrbitalTransfers()
 

@@ -1,5 +1,6 @@
 from strutils import splitLines, strip, join
 import sets
+import unittest
 
 type
   Direction = enum
@@ -132,62 +133,65 @@ proc evolveState(state: State, inputs: seq[int]): State =
   # Don't do this; it overwrites the hull color at that grid point
   # result.grid[result.robotLoc.y][result.robotLoc.x] = Point(result.robotDir)
 
-when isMainModule:
-  let
-    stateStr0 = """
+suite "day11":
+  test "part1":
+    let
+      stateStr0 = """
 .....
 .....
 ..^..
 .....
 .....
-""".strip()
-    state0 = stateStr0.toState()
-    stateStr1 = """
+  """.strip()
+      state0 = stateStr0.toState()
+      stateStr1 = """
 .....
 .....
 .<#..
 .....
 .....
-""".strip()
-    state1 = stateStr1.toState()
-    stateStr2 = """
+  """.strip()
+      state1 = stateStr1.toState()
+      stateStr2 = """
 .....
 .....
 ..#..
 .v...
 .....
-""".strip()
-    state2 = stateStr2.toState()
-    stateStr3 = """
+  """.strip()
+      state2 = stateStr2.toState()
+      stateStr3 = """
 .....
 .....
 ..^..
 .##..
 .....
-""".strip()
-    state3 = stateStr3.toState()
-    stateStr4 = """
+  """.strip()
+      state3 = stateStr3.toState()
+      stateStr4 = """
 .....
 ..<#.
 ...#.
 .##..
 .....
-""".strip()
-    state4 = stateStr4.toState()
-  doAssert $state0 == stateStr0
-  var evolvedState = state0.evolveState(@[1, 0])
-  # We need to compare against the string representation of the internal
-  # state, because TODO
-  doAssert $evolvedState == $state1
-  evolvedState = evolvedState.evolveState(@[0, 0])
-  doAssert $evolvedState == $state2
-  evolvedState = evolvedState.evolveState(@[1, 0])
-  evolvedState = evolvedState.evolveState(@[1, 0])
-  doAssert $evolvedState == $state3
-  evolvedState = evolvedState.evolveState(@[0, 1])
-  evolvedState = evolvedState.evolveState(@[1, 0])
-  evolvedState = evolvedState.evolveState(@[1, 0])
-  doAssert $evolvedState == $state4
+  """.strip()
+      state4 = stateStr4.toState()
+    check: $state0 == stateStr0
+    var evolvedState = state0.evolveState(@[1, 0])
+    # We need to compare against the string representation of the internal
+    # state, because TODO
+    check: $evolvedState == $state1
+    evolvedState = evolvedState.evolveState(@[0, 0])
+    check: $evolvedState == $state2
+    evolvedState = evolvedState.evolveState(@[1, 0])
+    evolvedState = evolvedState.evolveState(@[1, 0])
+    check: $evolvedState == $state3
+    evolvedState = evolvedState.evolveState(@[0, 1])
+    evolvedState = evolvedState.evolveState(@[1, 0])
+    evolvedState = evolvedState.evolveState(@[1, 0])
+    check: $evolvedState == $state4
+
+when isMainModule:
 
   let
     f = open("day11_input.txt")

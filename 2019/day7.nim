@@ -3,6 +3,7 @@ from sequtils import map
 from strutils import split, parseInt
 from sugar import `=>`
 import timeit
+import unittest
 
 # third-party, `nimble install itertools`
 from itertools import distinctPermutations
@@ -189,17 +190,28 @@ proc runAllPhases(program: seq[int], feedbackMode: bool = false): int {.discarda
     if thrustForPhases > result:
       result = thrustForPhases
 
+suite "day7":
+  test "part1":
+    let
+      testProgram1 = stringToProgram("3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0")
+      testProgram2 = stringToProgram("3,23,3,24,1002,24,10,24,1002,23,-1,23,101,5,23,23,1,24,23,23,4,23,99,0,0")
+      testProgram3 = stringToProgram("3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0")
+    check: runAmplifierSequence([4, 3, 2, 1, 0], testProgram1) == 43210
+    check: runAmplifierSequence([0, 1, 2, 3, 4], testProgram2) == 54321
+    check: runAmplifierSequence([1, 0, 4, 3, 2], testProgram3) == 65210
+    check: runAllPhases(testProgram1) == 43210
+    check: runAllPhases(testProgram2) == 54321
+    check: runAllPhases(testProgram3) == 65210
+
+  test "part2":
+    let
+      part2TestProgram1 = stringToProgram("3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5")
+      part2TestProgram2 = stringToProgram("3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10")
+    check: runAmplifierSequenceFeedback([9, 8, 7, 6, 5], part2TestProgram1) == 139629729
+    check: runAmplifierSequenceFeedback([9, 7, 8, 5, 6], part2TestProgram2) == 18216
+
+
 when isMainModule:
-  let
-    testProgram1 = stringToProgram("3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0")
-    testProgram2 = stringToProgram("3,23,3,24,1002,24,10,24,1002,23,-1,23,101,5,23,23,1,24,23,23,4,23,99,0,0")
-    testProgram3 = stringToProgram("3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0")
-  doAssert runAmplifierSequence([4, 3, 2, 1, 0], testProgram1) == 43210
-  doAssert runAmplifierSequence([0, 1, 2, 3, 4], testProgram2) == 54321
-  doAssert runAmplifierSequence([1, 0, 4, 3, 2], testProgram3) == 65210
-  doAssert runAllPhases(testProgram1) == 43210
-  doAssert runAllPhases(testProgram2) == 54321
-  doAssert runAllPhases(testProgram3) == 65210
   let
     f = open("day7_input.txt")
     unprocessedProgram = readLine(f).stringToProgram()
@@ -207,11 +219,6 @@ when isMainModule:
   let p1output = runAllPhases(unprocessedProgram)
   echo "part 1: ", p1output
 
-  let
-    part2TestProgram1 = stringToProgram("3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5")
-    part2TestProgram2 = stringToProgram("3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10")
-  doAssert runAmplifierSequenceFeedback([9, 8, 7, 6, 5], part2TestProgram1) == 139629729
-  doAssert runAmplifierSequenceFeedback([9, 7, 8, 5, 6], part2TestProgram2) == 18216
   let p2output = runAllPhases(unprocessedProgram, true)
   echo "part 2: ", p2output
 
