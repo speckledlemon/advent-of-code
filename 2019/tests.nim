@@ -7,4 +7,5 @@ import ./day1,
        ./day7,
        ./day8,
        ./day9,
-       ./day11
+       ./day11,
+       ./intcode
