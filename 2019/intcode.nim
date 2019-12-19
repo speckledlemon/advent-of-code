@@ -11,6 +11,13 @@ proc stringToProgram*(s: string): seq[int] =
   s.split(',').map(i => parseInt(i))
 
 type
+  IntcodeComputer* = object
+    program*: seq[int]
+    instructionPointer: int
+    relativeBase: int
+    output*: int
+    returned: bool
+    halted: bool
   Opcode = enum
     add = 1
     multiply = 2
@@ -74,15 +81,6 @@ proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode,
     relativeBase: T = 0): T =
   let programPtr = getPtr(tape, offset, mode, relativeBase)
   tape[programPtr]
-
-type
-  IntcodeComputer* = object
-    program*: seq[int]
-    instructionPointer: int
-    relativeBase: int
-    output*: int
-    returned: bool
-    halted: bool
 
 template extendProgram(mode: Mode): untyped =
   let
