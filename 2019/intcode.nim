@@ -395,8 +395,9 @@ suite "intcode_day5":
           34915192 * 34915192
       check: computer3.processProgram(emptyInput).output == 1125899906842624
 
-    # TODO link to where this was taken from
-    test "program4":
+    # Taken from
+    # https://www.reddit.com/r/adventofcode/comments/e8aw9j/2019_day_9_part_1_how_to_fix_203_error/fac3294/
+    test "redditPrograms":
       let
         computer4inputval = 69
         computer4input = @[computer4inputval]
@@ -429,3 +430,27 @@ suite "intcode_day5":
       check: computer4.instructionPointer == 6
       check: computer4.relativeBase == 1
       check: computer4.output == computer4inputval
+
+      let
+        rp1 = @[109, -1, 4, 1, 99]
+        rp1o = -1
+        rp2 = @[109, -1, 104, 1, 99]
+        rp2o = 1
+        rp3 = @[109, -1, 204, 1, 99]
+        rp3o = 109
+        rp4 = @[109, 1, 9, 2, 204, -6, 99]
+        rp4o = 204
+        rp5 = @[109, 1, 109, 9, 204, -6, 99]
+        rp5o = 204
+        rp6 = @[109, 1, 209, -1, 204, -106, 99]
+        rp6o = 204
+        rp7 = @[109, 1, 3, 3, 204, 2, 99]
+        rp8 = @[109, 1, 203, 2, 204, 2, 99]
+      check: IntcodeComputer(program: rp1).processProgram(emptyInput).output == rp1o
+      check: IntcodeComputer(program: rp2).processProgram(emptyInput).output == rp2o
+      check: IntcodeComputer(program: rp3).processProgram(emptyInput).output == rp3o
+      check: IntcodeComputer(program: rp4).processProgram(emptyInput).output == rp4o
+      check: IntcodeComputer(program: rp5).processProgram(emptyInput).output == rp5o
+      check: IntcodeComputer(program: rp6).processProgram(emptyInput).output == rp6o
+      check: IntcodeComputer(program: rp7).processProgram(@[69]).output == 69
+      check: IntcodeComputer(program: rp8).processProgram(@[420]).output == 420
