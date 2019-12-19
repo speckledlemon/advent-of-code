@@ -111,16 +111,16 @@ template res(): untyped =
 proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): IntcodeComputer =
   result = computer
   result.halted = false
+  result.returned = false
   var inputCounter: T
   while true:
     result = result.step(inputs, inputCounter)
-    if result.returned:
-      break
-    elif result.halted:
+    if result.returned or result.halted:
       break
 
 proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T], inputCounter: var T): IntcodeComputer =
   result = computer
+  result.halted = false
   result.returned = false
   var
     modes: seq[Mode]
@@ -145,9 +145,8 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T], inputCounte
       result.instructionPointer += opcode.len
     of Opcode.output:
       result.output = first()
-      result.instructionPointer += opcode.len
       result.returned = true
-      return result
+      result.instructionPointer += opcode.len
     of Opcode.jumpIfTrue:
       result.instructionPointer = if first() != 0: second()
                                   else: result.instructionPointer + opcode.len
