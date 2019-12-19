@@ -26,9 +26,6 @@ type
     position = 0
     immediate = 1
     relative = 2
-  OutputMode {.pure.} = enum
-    ret
-    halt
 
 ## The length of an Opcode accounts for the number of arguments it takes, plus
 ## one for the opcode itself.
@@ -111,27 +108,18 @@ template res(): untyped =
                          mode, result.relativeBase)
   result.program[actualPtr]
 
-proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
-                                    outputMode: OutputMode = ret): IntcodeComputer =
+proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): IntcodeComputer =
   result = computer
   result.halted = false
   var inputCounter: T
   while true:
-    result = result.step(inputs, outputMode, inputCounter)
+    result = result.step(inputs, inputCounter)
     if result.returned:
       break
-    else:
-      case outputMode:
-        of OutputMode.ret:
-          if result.output != 0:
-            break
-        of OutputMode.halt:
-          if result.halted:
-            break
+    elif result.halted:
+      break
 
-proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
-                          outputMode: OutputMode,
-                              inputCounter: var T): IntcodeComputer =
+proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T], inputCounter: var T): IntcodeComputer =
   result = computer
   result.returned = false
   var
@@ -158,14 +146,8 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
     of Opcode.output:
       result.output = first()
       result.instructionPointer += opcode.len
-      case outputMode:
-        of OutputMode.ret:
-          if result.output != 0:
-            result.returned = true
-            return result
-        of OutputMode.halt:
-          result.returned = true
-          return result
+      result.returned = true
+      return result
     of Opcode.jumpIfTrue:
       result.instructionPointer = if first() != 0: second()
                                   else: result.instructionPointer + opcode.len
@@ -182,27 +164,23 @@ proc step[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T],
       result.relativeBase += first()
       result.instructionPointer += opcode.len
     of Opcode.halt:
+      result.halted = true
       result.instructionPointer += opcode.len
-      case outputMode:
-        of OutputMode.ret:
-          return result
-        of OutputMode.halt:
-          result.halted = true
 
 proc runAmplifierSequence(phases: openArray[int], program: seq[int],
     signal: int = 0): int =
   assert phases.len == 5
   let
     output1 = IntcodeComputer(program: program).processProgram(@[phases[0],
-        signal], OutputMode.halt).output
+        signal]).output
     output2 = IntcodeComputer(program: program).processProgram(@[phases[1],
-        output1], OutputMode.halt).output
+        output1]).output
     output3 = IntcodeComputer(program: program).processProgram(@[phases[2],
-        output2], OutputMode.halt).output
+        output2]).output
     output4 = IntcodeComputer(program: program).processProgram(@[phases[3],
-        output3], OutputMode.halt).output
+        output3]).output
     output5 = IntcodeComputer(program: program).processProgram(@[phases[4],
-        output4], OutputMode.halt).output
+        output4]).output
   result = output5
 
 proc runAmplifierSequenceFeedback(phases: openArray[int], program: seq[int],
@@ -210,26 +188,26 @@ proc runAmplifierSequenceFeedback(phases: openArray[int], program: seq[int],
   assert phases.len == 5
   var
     amp1 = IntcodeComputer(program: program).processProgram(@[phases[0],
-        signal], OutputMode.halt)
+        signal])
     amp2 = IntcodeComputer(program: program).processProgram(@[phases[1],
-        amp1.output], OutputMode.halt)
+        amp1.output])
     amp3 = IntcodeComputer(program: program).processProgram(@[phases[2],
-        amp2.output], OutputMode.halt)
+        amp2.output])
     amp4 = IntcodeComputer(program: program).processProgram(@[phases[3],
-        amp3.output], OutputMode.halt)
+        amp3.output])
     amp5 = IntcodeComputer(program: program).processProgram(@[phases[4],
-        amp4.output], OutputMode.halt)
+        amp4.output])
   while true:
     if not amp1.halted:
-      amp1 = amp1.processProgram(@[amp5.output], OutputMode.halt)
+      amp1 = amp1.processProgram(@[amp5.output])
     if not amp2.halted:
-      amp2 = amp2.processProgram(@[amp1.output], OutputMode.halt)
+      amp2 = amp2.processProgram(@[amp1.output])
     if not amp3.halted:
-      amp3 = amp3.processProgram(@[amp2.output], OutputMode.halt)
+      amp3 = amp3.processProgram(@[amp2.output])
     if not amp4.halted:
-      amp4 = amp4.processProgram(@[amp3.output], OutputMode.halt)
+      amp4 = amp4.processProgram(@[amp3.output])
     if not amp5.halted:
-      amp5 = amp5.processProgram(@[amp4.output], OutputMode.halt)
+      amp5 = amp5.processProgram(@[amp4.output])
     else:
       result = amp5.output
       break
@@ -250,7 +228,7 @@ proc runAllPhases(program: seq[int], feedbackMode: bool = false): int {.discarda
 proc run(unprocessedProgram: seq[int], input: int): int {.discardable.} =
   var computer = IntcodeComputer(program: unprocessedProgram)
   while true:
-    computer = computer.processProgram(@[input], OutputMode.halt)
+    computer = computer.processProgram(@[input])
     if computer.halted or computer.returned:
       break
   result = computer.output
@@ -258,16 +236,16 @@ proc run(unprocessedProgram: seq[int], input: int): int {.discardable.} =
 suite "intcode_day2":
   test "processProgram":
     check: IntcodeComputer(program: @[1, 0, 0, 0, 99]).processProgram(
-        emptyInput, OutputMode.halt).program == @[2, 0, 0, 0, 99]
+        emptyInput).program == @[2, 0, 0, 0, 99]
     check: IntcodeComputer(program: @[2, 3, 0, 3, 99]).processProgram(
-        emptyInput, OutputMode.halt).program == @[2, 3, 0, 6, 99]
+        emptyInput).program == @[2, 3, 0, 6, 99]
     check: IntcodeComputer(program: @[2, 4, 4, 5, 99, 0]).processProgram(
-        emptyInput, OutputMode.halt).program == @[2, 4, 4, 5, 99, 9801]
+        emptyInput).program == @[2, 4, 4, 5, 99, 9801]
     check: IntcodeComputer(program: @[1, 1, 1, 4, 99, 5, 6, 0,
-        99]).processProgram(emptyInput, OutputMode.halt).program == @[30, 1, 1,
+        99]).processProgram(emptyInput).program == @[30, 1, 1,
         4, 2, 5, 6, 0, 99]
     check: IntcodeComputer(program: @[1, 9, 10, 3, 2, 3, 11, 0, 99, 30, 40,
-        50]).processProgram(emptyInput, OutputMode.halt).program == @[3500, 9,
+        50]).processProgram(emptyInput).program == @[3500, 9,
         10, 70, 2, 3, 11, 0, 99, 30, 40, 50]
 
 suite "intcode_day5":
@@ -281,9 +259,9 @@ suite "intcode_day5":
   test "processProgram1":
     let
       computer1 = IntcodeComputer(program: @[1002, 4, 3, 4, 33]).processProgram(
-          @[27], OutputMode.halt)
+          @[27])
       computer2 = IntcodeCOmputer(program: @[1101, 100, -1, 4,
-          0]).processProgram(@[28], OutputMode.halt)
+          0]).processProgram(@[28])
     check: computer1.output == 0
     check: computer1.program == @[1002, 4, 3, 4, 99]
     check: computer2.output == 0
@@ -291,47 +269,47 @@ suite "intcode_day5":
 
   test "processProgram2":
     let p1 = @[3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8]
-    let c1 = IntcodeComputer(program: p1).processProgram(@[8], OutputMode.halt)
+    let c1 = IntcodeComputer(program: p1).processProgram(@[8])
     check: c1.output == 1
     check: c1.program == @[3, 9, 8, 9, 10, 9, 4, 9, 99, 1, 8]
-    let c2 = IntcodeComputer(program: p1).processProgram(@[7], OutputMode.halt)
+    let c2 = IntcodeComputer(program: p1).processProgram(@[7])
     check: c2.output == 0
     check: c2.program == @[3, 9, 8, 9, 10, 9, 4, 9, 99, 0, 8]
     let p2 = @[3, 3, 1108, -1, 8, 3, 4, 3, 99]
-    let c3 = IntcodeComputer(program: p2).processProgram(@[8], OutputMode.halt)
+    let c3 = IntcodeComputer(program: p2).processProgram(@[8])
     check: c3.output == 1
     check: c3.program == @[3, 3, 1108, 1, 8, 3, 4, 3, 99]
-    let c4 = IntcodeComputer(program: p2).processProgram(@[7], OutputMode.halt)
+    let c4 = IntcodeComputer(program: p2).processProgram(@[7])
     check: c4.output == 0
     check: c4.program == @[3, 3, 1108, 0, 8, 3, 4, 3, 99]
     let p3 = @[3, 3, 1107, -1, 8, 3, 4, 3, 99]
-    let c5 = IntcodeComputer(program: p3).processProgram(@[7], OutputMode.halt)
+    let c5 = IntcodeComputer(program: p3).processProgram(@[7])
     check: c5.output == 1
     check: c5.program == @[3, 3, 1107, 1, 8, 3, 4, 3, 99]
-    let c6 = IntcodeComputer(program: p3).processProgram(@[8], OutputMode.halt)
+    let c6 = IntcodeComputer(program: p3).processProgram(@[8])
     check: c6.output == 0
     check: c6.program == @[3, 3, 1107, 0, 8, 3, 4, 3, 99]
 
     let p4 = @[3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9]
-    let c7 = IntcodeComputer(program: p4).processProgram(@[0], OutputMode.halt)
+    let c7 = IntcodeComputer(program: p4).processProgram(@[0])
     check: c7.output == 0
-    let c8 = IntcodeComputer(program: p4).processProgram(@[2], OutputMode.halt)
+    let c8 = IntcodeComputer(program: p4).processProgram(@[2])
     check: c8.output == 1
 
     let p5 = @[3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1]
-    let c9 = IntcodeComputer(program: p5).processProgram(@[0], OutputMode.halt)
+    let c9 = IntcodeComputer(program: p5).processProgram(@[0])
     check: c9.output == 0
-    let c10 = IntcodeComputer(program: p5).processProgram(@[2], OutputMode.halt)
+    let c10 = IntcodeComputer(program: p5).processProgram(@[2])
     check: c10.output == 1
 
     let p6 = @[3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20,
         31, 1106, 0, 36, 98, 0, 0, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104,
         999, 1105, 1, 46, 1101, 1000, 1, 20, 4, 20, 1105, 1, 46, 98, 99]
-    let c11 = IntcodeComputer(program: p6).processProgram(@[7], OutputMode.halt)
+    let c11 = IntcodeComputer(program: p6).processProgram(@[7])
     check: c11.output == 999
-    let c12 = IntcodeComputer(program: p6).processProgram(@[8], OutputMode.halt)
+    let c12 = IntcodeComputer(program: p6).processProgram(@[8])
     check: c12.output == 1000
-    let c13 = IntcodeComputer(program: p6).processProgram(@[9], OutputMode.halt)
+    let c13 = IntcodeComputer(program: p6).processProgram(@[9])
     check: c13.output == 1001
 
   suite "intcode_day7":
@@ -378,10 +356,10 @@ suite "intcode_day5":
       var
         computer0 = IntcodeComputer(program: program0, relativeBase: 2000)
         inputCounter0 = 0
-      computer0 = computer0.step(emptyInput, ret, inputCounter0)
+      computer0 = computer0.step(emptyInput, inputCounter0)
       check: computer0.instructionPointer == 2
       check: computer0.relativeBase == 2019
-      computer0 = computer0.step(emptyInput, ret, inputCounter0)
+      computer0 = computer0.step(emptyInput, inputCounter0)
       check: computer0.instructionPointer == 4
       check: computer0.relativeBase == 2019
       check: getPtr(program0, 3, Mode.relative, 2019) == 1985
@@ -394,8 +372,7 @@ suite "intcode_day5":
         redditQuineComputer = IntcodeComputer(program: redditQuineInput)
         redditQuineOutput = newSeq[int]()
       while not redditQuineComputer.halted:
-        redditQuineComputer = redditQuineComputer.processProgram(emptyInput,
-            OutputMode.halt)
+        redditQuineComputer = redditQuineComputer.processProgram(emptyInput)
         if not redditQuineComputer.halted:
           redditQuineOutput.add(redditQuineComputer.output)
       check: redditQuineInput == redditQuineOutput
@@ -406,7 +383,7 @@ suite "intcode_day5":
         computer1 = IntcodeComputer(program: program1)
         computer1Output = newSeq[int]()
       while not computer1.halted:
-        computer1 = computer1.processProgram(emptyInput, OutputMode.halt)
+        computer1 = computer1.processProgram(emptyInput)
         if not computer1.halted:
           computer1Output.add(computer1.output)
       check: program1 == computer1Output
@@ -415,9 +392,9 @@ suite "intcode_day5":
       let
         computer2 = IntcodeComputer(program: stringToProgram("1102,34915192,34915192,7,4,7,99,0"))
         computer3 = IntcodeComputer(program: stringToProgram("104,1125899906842624,99"))
-      check: computer2.processProgram(emptyInput, OutputMode.halt).output ==
+      check: computer2.processProgram(emptyInput).output ==
           34915192 * 34915192
-      check: computer3.processProgram(emptyInput, OutputMode.halt).output == 1125899906842624
+      check: computer3.processProgram(emptyInput).output == 1125899906842624
 
     # TODO link to where this was taken from
     test "program4":
@@ -432,7 +409,7 @@ suite "intcode_day5":
 
       check: parseInstruction($computer4.program[
           computer4.instructionPointer]) == (@[immediate, position, position], adjustRelativeBase)
-      computer4 = computer4.step(emptyInput, OutputMode.halt, inputCounter)
+      computer4 = computer4.step(emptyInput, inputCounter)
       check: computer4.instructionPointer == 2
       check: computer4.relativeBase == 1
       check: computer4.output == 0
@@ -442,14 +419,14 @@ suite "intcode_day5":
       check: getPtr(computer4.program, computer4.instructionPointer + 1,
           relative, computer4.relativeBase) == 3
       check: getPtr(computer4program, 2 + 1, relative, 1) == 3
-      computer4 = computer4.step(computer4input, OutputMode.halt, inputCounter)
+      computer4 = computer4.step(computer4input, inputCounter)
       check: computer4.instructionPointer == 4
       check: computer4.relativeBase == 1
       check: computer4.output == 0
       check: computer4.program == computer4modifiedProgram
       check: parseInstruction($computer4.program[
           computer4.instructionPointer]) == (@[relative, position, position], output)
-      computer4 = computer4.step(emptyInput, OutputMode.halt, inputCounter)
+      computer4 = computer4.step(emptyInput, inputCounter)
       check: computer4.instructionPointer == 6
       check: computer4.relativeBase == 1
       check: computer4.output == computer4inputval
