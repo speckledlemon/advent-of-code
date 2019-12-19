@@ -7,7 +7,7 @@ from itertools import distinctPermutations
 
 const emptyInput = newSeq[int]()
 
-proc stringToProgram(s: string): seq[int] =
+proc stringToProgram*(s: string): seq[int] =
   s.split(',').map(i => parseInt(i))
 
 type
@@ -76,11 +76,11 @@ proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode,
   tape[programPtr]
 
 type
-  IntcodeComputer = object
-    program: seq[int]
+  IntcodeComputer* = object
+    program*: seq[int]
     instructionPointer: int
     relativeBase: int
-    output: int
+    output*: int
     returned: bool
     halted: bool
 
@@ -108,7 +108,7 @@ template res(): untyped =
                          mode, result.relativeBase)
   result.program[actualPtr]
 
-proc processProgram[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): IntcodeComputer =
+proc processProgram*[T: SomeInteger](computer: IntcodeComputer, inputs: seq[T]): IntcodeComputer =
   result = computer
   result.halted = false
   result.returned = false
@@ -259,7 +259,7 @@ suite "intcode_day5":
     let
       computer1 = IntcodeComputer(program: @[1002, 4, 3, 4, 33]).processProgram(
           @[27])
-      computer2 = IntcodeCOmputer(program: @[1101, 100, -1, 4,
+      computer2 = IntcodeComputer(program: @[1101, 100, -1, 4,
           0]).processProgram(@[28])
     check: computer1.output == 0
     check: computer1.program == @[1002, 4, 3, 4, 99]
