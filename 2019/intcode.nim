@@ -432,7 +432,7 @@ suite "intcode_day5":
 
       check: parseInstruction($computer4.program[
           computer4.instructionPointer]) == (@[immediate, position, position], adjustRelativeBase)
-      computer4 = computer4.step(emptyInput, OutputMode.ret, inputCounter)
+      computer4 = computer4.step(emptyInput, OutputMode.halt, inputCounter)
       check: computer4.instructionPointer == 2
       check: computer4.relativeBase == 1
       check: computer4.output == 0
@@ -442,14 +442,14 @@ suite "intcode_day5":
       check: getPtr(computer4.program, computer4.instructionPointer + 1,
           relative, computer4.relativeBase) == 3
       check: getPtr(computer4program, 2 + 1, relative, 1) == 3
-      computer4 = computer4.step(computer4input, OutputMode.ret, inputCounter)
+      computer4 = computer4.step(computer4input, OutputMode.halt, inputCounter)
       check: computer4.instructionPointer == 4
       check: computer4.relativeBase == 1
       check: computer4.output == 0
       check: computer4.program == computer4modifiedProgram
       check: parseInstruction($computer4.program[
           computer4.instructionPointer]) == (@[relative, position, position], output)
-      computer4 = computer4.step(emptyInput, OutputMode.ret, inputCounter)
+      computer4 = computer4.step(emptyInput, OutputMode.halt, inputCounter)
       check: computer4.instructionPointer == 6
       check: computer4.relativeBase == 1
       check: computer4.output == computer4inputval
