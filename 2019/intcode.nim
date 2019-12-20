@@ -82,26 +82,36 @@ proc getArg[T: SomeInteger](tape: seq[T], offset: T, mode: Mode,
   let programPtr = getPtr(tape, offset, mode, relativeBase)
   tape[programPtr]
 
-template extendProgram(mode: Mode): untyped =
-  let
-    pos = opcode.len - 1
-    actualPtr = getPtr(result.program, result.instructionPointer + pos,
-                       mode, result.relativeBase)
-  if actualPtr > high(result.program):
-    result.program = extendProgram(result.program, 2 * actualPtr)
+template extend(index: int): untyped =
+  if index > high(computer.program):
+    computer.program = extendProgram(computer.program, 2 * index)
+
+proc extendProgram(computer: var IntcodeComputer, pos: int, mode: Mode) =
+  let offset = computer.instructionPointer + pos
+  case mode:
+    of Mode.relative:
+      extend(offset)
+      extend(computer.program[offset])
+      extend(computer.program[offset] + computer.relativeBase)
+    of Mode.position:
+      extend(offset)
+      extend(computer.program[offset])
+    of Mode.immediate:
+      extend(offset)
+
 template first(): untyped =
-  extendProgram(modes[0])
+  result.extendProgram(1, modes[0])
   getArg(result.program, result.instructionPointer + 1, modes[0],
          result.relativeBase)
 template second(): untyped =
-  extendProgram(modes[1])
+  result.extendProgram(2, modes[1])
   getArg(result.program, result.instructionPointer + 2, modes[1],
          result.relativeBase)
 template res(): untyped =
   let
     pos = opcode.len - 1
     mode = modes[pos - 1]
-  extendProgram(mode)
+  result.extendProgram(pos, mode)
   let actualPtr = getPtr(result.program, result.instructionPointer + pos,
                          mode, result.relativeBase)
   result.program[actualPtr]
