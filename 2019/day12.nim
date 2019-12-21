@@ -10,13 +10,7 @@ import itertools
 import timeit
 
 type
-  CelestialBody = tuple
-    x: int
-    y: int
-    z: int
-    vx: int
-    vy: int
-    vz: int
+  CelestialBody = array[6, int]
 
 proc parseLine(line: string): CelestialBody =
   var
@@ -27,35 +21,24 @@ proc parseLine(line: string): CelestialBody =
     x = matches[0].parseInt()
     y = matches[1].parseInt()
     z = matches[2].parseInt()
-  (x: x, y: y, z: z, vx: 0, vy: 0, vz: 0)
+  [x, y, z, 0, 0, 0]
 
 proc applyGravity(bodies: var seq[CelestialBody]) =
   # ABCD -> AB, AC, AD, BC, BD, CD
   for p in combinations(toSeq(low(bodies)..high(bodies)), 2):
-    if bodies[p[0]].x > bodies[p[1]].x:
-      bodies[p[0]].vx -= 1
-      bodies[p[1]].vx += 1
-    elif bodies[p[0]].x < bodies[p[1]].x:
-      bodies[p[0]].vx += 1
-      bodies[p[1]].vx -= 1
-    if bodies[p[0]].y > bodies[p[1]].y:
-      bodies[p[0]].vy -= 1
-      bodies[p[1]].vy += 1
-    elif bodies[p[0]].y < bodies[p[1]].y:
-      bodies[p[0]].vy += 1
-      bodies[p[1]].vy -= 1
-    if bodies[p[0]].z > bodies[p[1]].z:
-      bodies[p[0]].vz -= 1
-      bodies[p[1]].vz += 1
-    elif bodies[p[0]].z < bodies[p[1]].z:
-      bodies[p[0]].vz += 1
-      bodies[p[1]].vz -= 1
+    for dim in 0..2:
+      if bodies[p[0]][dim] > bodies[p[1]][dim]:
+        bodies[p[0]][dim + 3] -= 1
+        bodies[p[1]][dim + 3] += 1
+      elif bodies[p[0]][dim] < bodies[p[1]][dim]:
+        bodies[p[0]][dim + 3] += 1
+        bodies[p[1]][dim + 3] -= 1
 
 proc applyVelocity(bodies: var seq[CelestialBody]) =
   for b in bodies.mitems:
-    b.x += b.vx
-    b.y += b.vy
-    b.z += b.vz
+    b[0] += b[3]
+    b[1] += b[4]
+    b[2] += b[5]
 
 proc step(bodies: var seq[CelestialBody]) =
   bodies.applyGravity()
@@ -69,18 +52,18 @@ proc calculateEnergy(bodies: seq[CelestialBody]): int =
     pe: int
     ke: int
   for b in bodies:
-    pe = b.x.abs + b.y.abs + b.z.abs
-    ke = b.vx.abs + b.vy.abs + b.vz.abs
+    pe = b[0].abs + b[1].abs + b[2].abs
+    ke = b[3].abs + b[4].abs + b[5].abs
     result += pe * ke
 
 proc allVelocitiesAreZero(bodies: seq[CelestialBody]): bool =
   result = true
   for b in bodies:
-    if b.vx != 0:
+    if b[3] != 0:
       return false
-    elif b.vy != 0:
+    elif b[4] != 0:
       return false
-    elif b.vz != 0:
+    elif b[5] != 0:
       return false
 
 proc timeToSeenState(bodies: seq[CelestialBody]): int {.discardable.} =
@@ -104,63 +87,63 @@ suite "day12":
 <x=3, y=5, z=-1>
 """.strip().split("\n")
       res = @[
-        (x: -1, y: 0, z: 2, vx: 0, vy: 0, vz: 0),
-        (x: 2, y: -10, z: -7, vx: 0, vy: 0, vz: 0),
-        (x: 4, y: -8, z: 8, vx: 0, vy: 0, vz: 0),
-        (x: 3, y: 5, z: -1, vx: 0, vy: 0, vz: 0)
+        [-1, 0, 2, 0, 0, 0],
+        [2, -10, -7, 0, 0, 0],
+        [4, -8, 8, 0, 0, 0],
+        [3, 5, -1, 0, 0, 0]
       ]
     check: exlines.map(l => l.parseLine()) == res
   test "applyGravity":
     var start = @[
-        (x: -1, y: 0, z: 2, vx: 0, vy: 0, vz: 0),
-        (x: 2, y: -10, z: -7, vx: 0, vy: 0, vz: 0),
-        (x: 4, y: -8, z: 8, vx: 0, vy: 0, vz: 0),
-        (x: 3, y: 5, z: -1, vx: 0, vy: 0, vz: 0)
+        [-1, 0, 2, 0, 0, 0],
+        [2, -10, -7, 0, 0, 0],
+        [4, -8, 8, 0, 0, 0],
+        [3, 5, -1, 0, 0, 0]
       ]
     start.applyGravity()
     check: start == @[
-        (x: -1, y: 0, z: 2, vx: 3, vy: -1, vz: -1),
-        (x: 2, y: -10, z: -7, vx: 1, vy: 3, vz: 3),
-        (x: 4, y: -8, z: 8, vx: -3, vy: 1, vz: -3),
-        (x: 3, y: 5, z: -1, vx: -1, vy: -3, vz: 1)
+        [-1, 0, 2, 3, -1, -1],
+        [2, -10, -7, 1, 3, 3],
+        [4, -8, 8, -3, 1, -3],
+        [3, 5, -1, -1, -3, 1]
     ]
   test "applyVelocity":
     var start = @[
-        (x: -1, y: 0, z: 2, vx: 3, vy: -1, vz: -1),
-        (x: 2, y: -10, z: -7, vx: 1, vy: 3, vz: 3),
-        (x: 4, y: -8, z: 8, vx: -3, vy: 1, vz: -3),
-        (x: 3, y: 5, z: -1, vx: -1, vy: -3, vz: 1)
+        [-1, 0, 2, 3, -1, -1],
+        [2, -10, -7, 1, 3, 3],
+        [4, -8, 8, -3, 1, -3],
+        [3, 5, -1, -1, -3, 1]
     ]
     start.applyVelocity()
     check: start == @[
-        (x: 2, y: -1, z: 1, vx: 3, vy: -1, vz: -1),
-        (x: 3, y: -7, z: -4, vx: 1, vy: 3, vz: 3),
-        (x: 1, y: -7, z: 5, vx: -3, vy: 1, vz: -3),
-        (x: 2, y: 2, z: 0, vx: -1, vy: -3, vz: 1)      
+        [2, -1, 1, 3, -1, -1],
+        [3, -7, -4, 1, 3, 3],
+        [1, -7, 5, -3, 1, -3],
+        [2, 2, 0, -1, -3, 1]
     ]
   test "step":
     var
       start = @[
-        (x: -1, y: 0, z: 2, vx: 0, vy: 0, vz: 0),
-        (x: 2, y: -10, z: -7, vx: 0, vy: 0, vz: 0),
-        (x: 4, y: -8, z: 8, vx: 0, vy: 0, vz: 0),
-        (x: 3, y: 5, z: -1, vx: 0, vy: 0, vz: 0)
+        [-1, 0, 2, 0, 0, 0],
+        [2, -10, -7, 0, 0, 0],
+        [4, -8, 8, 0, 0, 0],
+        [3, 5, -1, 0, 0, 0]
       ]
     let
       after10 = @[
-        (x: 2, y: 1, z: -3, vx: -3, vy: -2, vz: 1),
-        (x: 1, y: -8, z: 0, vx: -1, vy: 1, vz: 3),
-        (x: 3, y: -6, z: 1, vx: 3, vy: 2, vz: -3),
-        (x: 2, y: 0, z: 4, vx: 1, vy: -1, vz: -1)
+        [2, 1, -3, -3, -2, 1],
+        [1, -8, 0, -1, 1, 3],
+        [3, -6, 1, 3, 2, -3],
+        [2, 0, 4, 1, -1, -1]
       ]
     start.step(10)
     check: start == after10
   test "calculateEnergy":
     let after10 = @[
-        (x: 2, y: 1, z: -3, vx: -3, vy: -2, vz: 1),
-        (x: 1, y: -8, z: 0, vx: -1, vy: 1, vz: 3),
-        (x: 3, y: -6, z: 1, vx: 3, vy: 2, vz: -3),
-        (x: 2, y: 0, z: 4, vx: 1, vy: -1, vz: -1)
+        [2, 1, -3, -3, -2, 1],
+        [1, -8, 0, -1, 1, 3],
+        [3, -6, 1, 3, 2, -3],
+        [2, 0, 4, 1, -1, -1]
       ]
     check: after10.calculateEnergy() == 179
   test "timeToSeenState":
@@ -185,4 +168,4 @@ when isMainModule:
   var bodies = readAllLines("day12_input.txt").map(l => l.parseLine())
   bodies.step(1000)
   echo "part 1: ", bodies.calculateEnergy()
-  echo "part 2: ", bodies.timeToSeenState()
+  # echo "part 2: ", bodies.timeToSeenState()
