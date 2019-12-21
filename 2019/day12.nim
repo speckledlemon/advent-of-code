@@ -1,5 +1,11 @@
+## A lot of this was stolen directly from
+## https://github.com/Dementophobia/advent-of-code-2019.git.
+
+from algorithm import sorted
+import math
 import re
 import sequtils
+import sets
 import strutils
 import sugar
 import ./aoc_utils
@@ -47,35 +53,79 @@ proc step(bodies: var seq[CelestialBody], numSteps: Positive) =
   for i in 1..numSteps:
     bodies.step()
 
-proc calculateEnergy(bodies: seq[CelestialBody]): int =
-  var
-    pe: int
-    ke: int
+proc calculateEnergy(bodies: seq[CelestialBody]): int {.discardable.} =
   for b in bodies:
-    pe = b[0].abs + b[1].abs + b[2].abs
-    ke = b[3].abs + b[4].abs + b[5].abs
-    result += pe * ke
+    result += (b[0].abs + b[1].abs + b[2].abs) * (b[3].abs + b[4].abs + b[5].abs)
 
-proc allVelocitiesAreZero(bodies: seq[CelestialBody]): bool =
+proc applyGravity(moonsDim, velocitiesDim: var seq[int]) =
+  assert moonsDim.len == velocitiesDim.len
+  # ABCD -> AB, AC, AD, BC, BD, CD
+  for p in combinations(toSeq(low(moonsDim)..high(moonsDim)), 2):
+    if moonsDim[p[0]] > moonsDim[p[1]]:
+      velocitiesDim[p[0]] -= 1
+      velocitiesDim[p[1]] += 1
+    elif moonsDim[p[0]] < moonsDim[p[1]]:
+      velocitiesDim[p[0]] += 1
+      velocitiesDim[p[1]] -= 1
+
+proc applyVelocity(moonsDim, velocitiesDim: var seq[int]) =
+  assert moonsDim.len == velocitiesDim.len
+  for i in low(moonsDim)..high(moonsDim):
+    moonsDim[i] += velocitiesDim[i]
+
+proc matchesStartState(bodies: var seq[CelestialBody], moonsDim, velocitiesDim: var seq[int], dim: int): bool =
+  assert bodies.len == moonsDim.len
+  assert bodies.len == velocitiesDim.len
   result = true
-  for b in bodies:
-    if b[3] != 0:
+  for i in low(bodies)..high(bodies):
+    if bodies[i][dim] != moonsDim[i] or bodies[i][dim + 3] != velocitiesDim[i]:
       return false
-    elif b[4] != 0:
-      return false
-    elif b[5] != 0:
-      return false
+
+## Get all prime factors of the given value in ascending order.
+proc getPrimeFactors(value: int): seq[int] =
+  var
+    n = value
+    i = 2
+  while i * 1 <= n:
+    if n mod i != 0:
+      i += 1
+    else:
+      n = n div i
+      result.add(i)
+  if n > 1:
+    result.add(n)
+  result.sorted()
+
+proc calculateLCM[T: SomeInteger](values: openArray[T]): T =
+  let primesPerValue = values.map(v => v.getPrimeFactors())
+  var allPrimes: HashSet[T]
+  for ps in primesPerValue:
+    allPrimes = allPrimes + ps.toHashSet()
+  result = 1
+  var amount: T
+  for prime in allPrimes:
+    amount = primesPerValue.map(ps => ps.count(prime)).max
+    result *= (prime ^ amount)
 
 proc timeToSeenState(bodies: seq[CelestialBody]): int {.discardable.} =
   var
-    currentState = deepCopy(bodies)
-  result = 1
-  while true:
-    currentState.step()
-    if currentState.allVelocitiesAreZero():
-      result *= 2
-      break
-    result += 1
+    # just so we can pass by reference afterward
+    moonsAndVelocities = deepCopy(bodies)
+    steps: array[3, int]
+  for dim in 0..2:
+    var
+      moonsDim: seq[int]
+      velocitiesDim: seq[int]
+    for i in low(moonsAndVelocities)..high(moonsAndVelocities):
+      moonsDim.add(moonsAndVelocities[i][dim])
+      velocitiesDim.add(moonsAndVelocities[i][dim + 3])
+    while true:
+      applyGravity(moonsDim, velocitiesDim)
+      applyVelocity(moonsDim, velocitiesDim)
+      steps[dim] += 1
+      if matchesStartState(moonsAndVelocities, moonsDim, velocitiesDim, dim):
+        break
+  calculateLCM(steps)
 
 suite "day12":
   test "parseLine":
@@ -138,7 +188,7 @@ suite "day12":
       ]
     start.step(10)
     check: start == after10
-  test "calculateEnergy":
+pp  test "calculateEnergy":
     let after10 = @[
         [2, 1, -3, -3, -2, 1],
         [1, -8, 0, -1, 1, 3],
@@ -146,6 +196,15 @@ suite "day12":
         [2, 0, 4, 1, -1, -1]
       ]
     check: after10.calculateEnergy() == 179
+
+  test "getPrimeFactors":
+    check: getPrimeFactors(286332) == @[2, 2, 3, 107, 223]
+    check: getPrimeFactors(231614) == @[2, 115807]
+    check: getPrimeFactors(60424) == @[2, 2, 2, 7, 13, 83]
+
+  test "calculateLCM":
+    check: calculateLCM(@[286332, 231614, 60424]) == 500903629351944
+
   test "timeToSeenState":
     let
       ex1 = """
@@ -161,11 +220,13 @@ suite "day12":
 <x=9, y=-8, z=-3>
 """.strip().split("\n").map(l => l.parseLine())
     check: ex1.timeToSeenState() == 2772
-    echo timeGo(ex1.timeToSeenState())
-    # check: ex2.timeToSeenState() == 4686774924
+    check: ex2.timeToSeenState() == 4686774924
 
 when isMainModule:
   var bodies = readAllLines("day12_input.txt").map(l => l.parseLine())
   bodies.step(1000)
   echo "part 1: ", bodies.calculateEnergy()
-  # echo "part 2: ", bodies.timeToSeenState()
+  echo "part 2: ", bodies.timeToSeenState()
+
+  # echo timeGo(bodies.calculateEnergy())
+  echo timeGo(bodies.timeToSeenState())
