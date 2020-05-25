@@ -1,0 +1,48 @@
+#+BEGIN_SRC python :results output :noweb tangle :tangle 02.py
+with open("input.txt") as handle:
+    candidates = [x.strip() for x in handle.readlines()]
+
+from collections import Counter
+
+def checksum(candidates):
+    nc2 = 0
+    nc3 = 0
+    for candidate in candidates:
+        c = Counter(candidate)
+        c2 = c.values().count(2)
+        c3 = c.values().count(3)
+        if c2 > 0:
+            nc2 += 1
+        if c3 > 0:
+            nc3 += 1
+    return nc2 * nc3
+print(checksum(candidates))
+#+END_SRC
+
+#+BEGIN_SRC python :results output :noweb tangle :tangle 02.py
+with open("input.txt") as handle:
+    candidates = [x.strip() for x in handle.readlines()]
+
+from itertools import combinations
+
+def checksum(candidates):
+    for candidate1, candidate2 in combinations(candidates, 2):
+        ndiff = sum(c1 != c2 for c1, c2 in zip(candidate1, candidate2))
+        if ndiff == 1:
+            return ''.join([c1 for (c1, c2) in zip(candidate1, candidate2) if c1 == c2])
+
+print(checksum([
+    "abcde",
+    "fghij",
+    "klmno",
+    "pqrst",
+    "fguij",
+    "axcye",
+    "wvxyz",
+]))
+print(checksum(candidates))
+#+END_SRC
+
+#+RESULTS:
+: fgij
+: lujnogabetpmsydyfcovzixaw
